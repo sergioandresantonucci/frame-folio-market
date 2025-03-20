@@ -1,13 +1,16 @@
 
 import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PhotoProvider, usePhotoContext, Photo } from '@/context/PhotoContext';
 import { Layout } from '@/components/ui/Layout';
 import { PhotoGrid } from '@/components/PhotoGrid';
 import { PhotoViewer } from '@/components/PhotoViewer';
 import { Button } from '@/components/ui/button';
-import { Upload, RefreshCw } from 'lucide-react';
+import { Upload, RefreshCw, BarChart3, CreditCard } from 'lucide-react';
 import { detectFaces } from '@/utils/faceDetection';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 
 // Generate sample photos for demo purposes
 const generateSamplePhotos = (count: number): Photo[] => {
@@ -31,6 +34,8 @@ const generateSamplePhotos = (count: number): Photo[] => {
 
 const GalleryContent: React.FC = () => {
   const { state, addPhotos, addFaceData } = usePhotoContext();
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     // Load sample photos on first render if gallery is empty
@@ -98,14 +103,38 @@ const GalleryContent: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <h1 className="text-2xl font-semibold">Photo Gallery</h1>
-          <Button asChild className="bg-magenta hover:bg-magenta/90">
-            <a href="/upload">
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Photos
-            </a>
-          </Button>
+          
+          <div className={cn(
+            "flex",
+            isMobile ? "w-full mt-2 gap-2" : "gap-3"
+          )}>
+            <Button asChild className="bg-magenta hover:bg-magenta/90 flex-1 md:flex-none">
+              <a href="/upload">
+                <Upload className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">Upload Photos</span>
+              </a>
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="flex-1 md:flex-none"
+              onClick={() => navigate('/sales')}
+            >
+              <CreditCard className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">Sales</span>
+            </Button>
+            
+            <Button 
+              variant="outline"
+              className="flex-1 md:flex-none"
+              onClick={() => navigate('/analytics')}
+            >
+              <BarChart3 className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">Analytics</span>
+            </Button>
+          </div>
         </div>
         
         <PhotoGrid />
