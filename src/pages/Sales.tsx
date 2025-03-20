@@ -86,8 +86,8 @@ const Sales = () => {
               This Month
             </Button>
             
-            <Button asChild>
-              <a href="#export" className="bg-magenta hover:bg-magenta/90">
+            <Button>
+              <a href="#export" className="flex items-center bg-magenta hover:bg-magenta/90">
                 <Download className="h-4 w-4 mr-2" />
                 Export
               </a>
