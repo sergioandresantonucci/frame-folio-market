@@ -3,18 +3,34 @@ import React from 'react';
 import { PhotoProvider, usePhotoContext } from '@/context/PhotoContext';
 import { PhotoGrid } from '@/components/PhotoGrid';
 import { PhotoViewer } from '@/components/PhotoViewer';
+import { CartModal } from '@/components/CartModal';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ShoppingCart, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
 
 const ClientViewContent: React.FC = () => {
-  const { state, setDisplayMode } = usePhotoContext();
+  const { state, setDisplayMode, toggleCart, addToCart } = usePhotoContext();
   const navigate = useNavigate();
 
   const exitClientView = () => {
     setDisplayMode('grid');
     navigate('/gallery');
+  };
+
+  const handleAddSelectedToCart = () => {
+    if (state.selectedIds.length === 0) {
+      return;
+    }
+    
+    // Aggiungi ogni foto selezionata al carrello
+    state.selectedIds.forEach(id => {
+      addToCart(id);
+    });
+    
+    // Apri il carrello dopo aver aggiunto le foto
+    toggleCart();
   };
 
   return (
@@ -43,11 +59,16 @@ const ClientViewContent: React.FC = () => {
             
             <Button
               variant="outline"
-              className="border-white/20 text-white hover:bg-white/10"
-              disabled={state.selectedIds.length === 0}
+              className="border-white/20 text-white hover:bg-white/10 relative"
+              onClick={toggleCart}
             >
               <ShoppingCart className="h-4 w-4 mr-2" />
-              Cart
+              Carrello
+              {state.cartItems.length > 0 && (
+                <Badge className="absolute -top-2 -right-2 bg-magenta text-white border-0 h-5 min-w-5 flex items-center justify-center p-0">
+                  {state.cartItems.length}
+                </Badge>
+              )}
             </Button>
             
             <Button
@@ -56,9 +77,10 @@ const ClientViewContent: React.FC = () => {
                 state.selectedIds.length === 0 && "opacity-50 cursor-not-allowed"
               )}
               disabled={state.selectedIds.length === 0}
+              onClick={handleAddSelectedToCart}
             >
               <CreditCard className="h-4 w-4 mr-2" />
-              Checkout
+              Aggiungi al carrello
             </Button>
           </div>
         </div>
@@ -67,6 +89,7 @@ const ClientViewContent: React.FC = () => {
       <main className="container mx-auto px-4 py-8">
         <PhotoGrid />
         <PhotoViewer />
+        <CartModal />
       </main>
     </div>
   );

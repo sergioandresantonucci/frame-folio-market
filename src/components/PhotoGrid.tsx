@@ -14,7 +14,8 @@ import {
   CreditCard,
   Trash,
   Eye,
-  ScanFace
+  ScanFace,
+  ShoppingCart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -31,7 +32,8 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
     clearSelection,
     selectRange,
     setPrice,
-    setActivePhoto
+    setActivePhoto,
+    addToCart
   } = usePhotoContext();
   const [shiftKeyActive, setShiftKeyActive] = useState(false);
   const [ctrlKeyActive, setCtrlKeyActive] = useState(false);
@@ -154,6 +156,11 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
     clearSelection();
   };
 
+  const handleAddToCart = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    addToCart(id);
+  };
+
   if (filteredPhotos.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] text-center">
@@ -217,7 +224,8 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
               "overflow-hidden relative group transition-all duration-200 border-2",
               state.selectedIds.includes(photo.id) 
                 ? "border-magenta shadow-md scale-[0.98]" 
-                : "border-transparent hover:border-gray-200"
+                : "border-transparent hover:border-gray-200",
+              state.cartItems.includes(photo.id) && "border-green-500"
             )}
           >
             <div 
@@ -277,6 +285,19 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
                   <Button 
                     variant="ghost" 
                     size="icon" 
+                    className={cn(
+                      "h-7 w-7 bg-white/20 text-white hover:bg-white/30 hover:text-white",
+                      state.cartItems.includes(photo.id) && "bg-green-500/50 hover:bg-green-500/70"
+                    )}
+                    onClick={(e) => handleAddToCart(photo.id, e)}
+                    title={state.cartItems.includes(photo.id) ? "Già nel carrello" : "Aggiungi al carrello"}
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                  </Button>
+                  
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
                     className="h-7 w-7 bg-white/20 text-white hover:bg-white/30 hover:text-white"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -322,6 +343,12 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
             {state.selectedIds.includes(photo.id) && (
               <div className="absolute top-2 left-2 bg-magenta text-white p-1 rounded-full">
                 <Check className="h-4 w-4" />
+              </div>
+            )}
+            
+            {state.cartItems.includes(photo.id) && (
+              <div className="absolute top-2 right-2 bg-green-500 text-white p-1 rounded-full">
+                <ShoppingCart className="h-4 w-4" />
               </div>
             )}
           </Card>

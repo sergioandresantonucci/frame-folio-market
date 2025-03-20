@@ -16,13 +16,14 @@ import {
   Download,
   CreditCard,
   ScanFace,
-  Euro
+  Euro,
+  ShoppingCart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export const PhotoViewer: React.FC = () => {
-  const { state, setActivePhoto } = usePhotoContext();
+  const { state, setActivePhoto, addToCart, toggleCart } = usePhotoContext();
   const [zoomLevel, setZoomLevel] = useState(100);
   const [rotation, setRotation] = useState(0);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
@@ -73,12 +74,23 @@ export const PhotoViewer: React.FC = () => {
   };
 
   const handlePaymentSuccess = () => {
-    toast.success("Payment successful! Photo downloaded.");
+    toast.success("Pagamento completato con successo!");
     setShowPaymentDialog(false);
     handleClose();
   };
+  
+  const handleAddToCart = () => {
+    if (activePhoto) {
+      addToCart(activePhoto.id);
+      // Puoi anche decidere se chiudere il visualizzatore e aprire il carrello
+      // setActivePhoto(null);
+      // toggleCart();
+    }
+  };
 
   if (!activePhoto) return null;
+
+  const isInCart = state.cartItems.includes(activePhoto.id);
 
   return (
     <Dialog open={!!activePhoto} onOpenChange={(open) => !open && handleClose()}>
@@ -210,11 +222,29 @@ export const PhotoViewer: React.FC = () => {
               </span>
               
               <Button
+                variant={isInCart ? "outline" : "default"}
+                className={isInCart ? "border-green-500 text-green-600" : ""}
+                onClick={handleAddToCart}
+                disabled={isInCart}
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                {isInCart ? "Già nel carrello" : "Aggiungi al carrello"}
+              </Button>
+              
+              <Button
+                className="bg-magenta hover:bg-magenta/90"
+                onClick={() => toggleCart()}
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                Vai al carrello
+              </Button>
+              
+              <Button
                 className="bg-magenta hover:bg-magenta/90"
                 onClick={() => setShowPaymentDialog(true)}
               >
                 <CreditCard className="h-4 w-4 mr-2" />
-                Buy & Download
+                Acquista
               </Button>
             </div>
           </div>
@@ -225,15 +255,15 @@ export const PhotoViewer: React.FC = () => {
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Complete Purchase</DialogTitle>
+            <DialogTitle>Completa l'acquisto</DialogTitle>
             <DialogDescription>
-              Process payment to download this photo without watermark.
+              Procedi al pagamento per scaricare questa foto senza filigrana.
             </DialogDescription>
           </DialogHeader>
           
           <div className="grid gap-4 py-4">
             <div className="bg-gray-50 p-4 rounded-md flex items-center justify-between">
-              <span>Photo Price:</span>
+              <span>Prezzo foto:</span>
               <span className="font-medium">€{activePhoto.price.toFixed(2)}</span>
             </div>
             
@@ -264,11 +294,11 @@ export const PhotoViewer: React.FC = () => {
             </div>
             
             <div className="text-sm text-gray-500 mt-2">
-              <p>Your purchase includes:</p>
+              <p>Il tuo acquisto include:</p>
               <ul className="list-disc pl-5 mt-1 space-y-1">
-                <li>High resolution image without watermark</li>
-                <li>Personal and commercial usage rights</li>
-                <li>Instant download after payment</li>
+                <li>Immagine ad alta risoluzione senza filigrana</li>
+                <li>Diritti di utilizzo personale e commerciale</li>
+                <li>Download istantaneo dopo il pagamento</li>
               </ul>
             </div>
           </div>
@@ -279,7 +309,7 @@ export const PhotoViewer: React.FC = () => {
             onClick={handlePaymentSuccess}
           >
             <Download className="h-4 w-4 mr-2" />
-            Pay €{activePhoto.price.toFixed(2)} & Download
+            Paga €{activePhoto.price.toFixed(2)} e scarica
           </Button>
         </DialogContent>
       </Dialog>

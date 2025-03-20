@@ -33,6 +33,8 @@ type PhotoState = {
   activePhoto: Photo | null;
   displayMode: 'grid' | 'client';
   lastSyncTime: string | null;
+  cartOpen: boolean;
+  cartItems: string[];
 };
 
 type PhotoAction =
@@ -49,7 +51,11 @@ type PhotoAction =
   | { type: 'SYNC_COMPLETED' }
   | { type: 'SET_ACTIVE_PHOTO'; payload: string | null }
   | { type: 'SET_DISPLAY_MODE'; payload: PhotoState['displayMode'] }
-  | { type: 'ADD_FACE_DATA'; payload: { photoId: string; faces: Photo['faces'] } };
+  | { type: 'ADD_FACE_DATA'; payload: { photoId: string; faces: Photo['faces'] } }
+  | { type: 'TOGGLE_CART' }
+  | { type: 'ADD_TO_CART'; payload: string }
+  | { type: 'REMOVE_FROM_CART'; payload: string }
+  | { type: 'CLEAR_CART' };
 
 type PhotoContextType = {
   state: PhotoState;
@@ -66,6 +72,11 @@ type PhotoContextType = {
   setActivePhoto: (id: string | null) => void;
   setDisplayMode: (mode: PhotoState['displayMode']) => void;
   addFaceData: (photoId: string, faces: Photo['faces']) => void;
+  toggleCart: () => void;
+  addToCart: (id: string) => void;
+  removeFromCart: (id: string) => void;
+  clearCart: () => void;
+  getCartTotal: () => number;
 };
 
 const initialState: PhotoState = {
@@ -84,6 +95,8 @@ const initialState: PhotoState = {
   activePhoto: null,
   displayMode: 'grid',
   lastSyncTime: null,
+  cartOpen: false,
+  cartItems: [],
 };
 
 const photoReducer = (state: PhotoState, action: PhotoAction): PhotoState => {
@@ -98,6 +111,7 @@ const photoReducer = (state: PhotoState, action: PhotoAction): PhotoState => {
         ...state,
         photos: state.photos.filter(photo => !action.payload.includes(photo.id)),
         selectedIds: state.selectedIds.filter(id => !action.payload.includes(id)),
+        cartItems: state.cartItems.filter(id => !action.payload.includes(id)),
       };
     case 'SELECT_PHOTO':
       return {
@@ -174,6 +188,29 @@ const photoReducer = (state: PhotoState, action: PhotoAction): PhotoState => {
           photo.id === action.payload.photoId ? { ...photo, faces: action.payload.faces } : photo
         ),
       };
+    case 'TOGGLE_CART':
+      return {
+        ...state,
+        cartOpen: !state.cartOpen,
+      };
+    case 'ADD_TO_CART':
+      if (state.cartItems.includes(action.payload)) {
+        return state;
+      }
+      return {
+        ...state,
+        cartItems: [...state.cartItems, action.payload],
+      };
+    case 'REMOVE_FROM_CART':
+      return {
+        ...state,
+        cartItems: state.cartItems.filter(id => id !== action.payload),
+      };
+    case 'CLEAR_CART':
+      return {
+        ...state,
+        cartItems: [],
+      };
     default:
       return state;
   }
@@ -224,6 +261,24 @@ export const PhotoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     dispatch({ type: 'SET_DISPLAY_MODE', payload: mode });
   const addFaceData = (photoId: string, faces: Photo['faces']) => 
     dispatch({ type: 'ADD_FACE_DATA', payload: { photoId, faces } });
+  const toggleCart = () => dispatch({ type: 'TOGGLE_CART' });
+  const addToCart = (id: string) => {
+    dispatch({ type: 'ADD_TO_CART', payload: id });
+    toast.success('Foto aggiunta al carrello');
+  };
+  const removeFromCart = (id: string) => {
+    dispatch({ type: 'REMOVE_FROM_CART', payload: id });
+    toast.info('Foto rimossa dal carrello');
+  };
+  const clearCart = () => dispatch({ type: 'CLEAR_CART' });
+
+  // Calcola il totale del carrello
+  const getCartTotal = () => {
+    return state.cartItems.reduce((total, id) => {
+      const photo = state.photos.find(p => p.id === id);
+      return total + (photo ? photo.price : 0);
+    }, 0);
+  };
 
   return (
     <PhotoContext.Provider
@@ -241,7 +296,12 @@ export const PhotoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setFilters,
         setActivePhoto,
         setDisplayMode,
-        addFaceData
+        addFaceData,
+        toggleCart,
+        addToCart,
+        removeFromCart,
+        clearCart,
+        getCartTotal
       }}
     >
       {children}
