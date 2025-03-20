@@ -13,7 +13,8 @@ import {
   Download,
   CreditCard,
   Trash,
-  Eye
+  Eye,
+  ScanFace
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
