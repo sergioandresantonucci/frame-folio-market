@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PhotoProvider, usePhotoContext, Photo } from '@/context/PhotoContext';
@@ -12,22 +11,150 @@ import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
+// Sample photography images from Unsplash
+const sampleImages = [
+  {
+    id: 'photo-1',
+    src: 'https://images.unsplash.com/photo-1553525553-f103c606fa4a?q=80&w=1000',
+    desc: 'Wedding photo, couple in a field'
+  },
+  {
+    id: 'photo-2',
+    src: 'https://images.unsplash.com/photo-1494905998402-395d579af36f?q=80&w=1000',
+    desc: 'Portrait of woman in urban setting'
+  },
+  {
+    id: 'photo-3',
+    src: 'https://images.unsplash.com/photo-1597655601841-214a4cfe8b2c?q=80&w=1000',
+    desc: 'Family portrait in studio'
+  },
+  {
+    id: 'photo-4',
+    src: 'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?q=80&w=1000',
+    desc: 'Corporate headshot'
+  },
+  {
+    id: 'photo-5',
+    src: 'https://images.unsplash.com/photo-1543610892-0b1f7e6d8ac1?q=80&w=1000',
+    desc: 'Event photography, concert'
+  },
+  {
+    id: 'photo-6',
+    src: 'https://images.unsplash.com/photo-1580824456624-90e15a2fe5b1?q=80&w=1000',
+    desc: 'Product photography'
+  },
+  {
+    id: 'photo-7',
+    src: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?q=80&w=1000',
+    desc: 'Food photography'
+  },
+  {
+    id: 'photo-8',
+    src: 'https://images.unsplash.com/photo-1652509755556-f1f90e3afb4c?q=80&w=1000',
+    desc: 'Wedding ceremony'
+  },
+  {
+    id: 'photo-9',
+    src: 'https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1000',
+    desc: 'Couple portrait'
+  },
+  {
+    id: 'photo-10',
+    src: 'https://images.unsplash.com/photo-1540331547168-8b63109225b7?q=80&w=1000',
+    desc: 'Fashion photography'
+  },
+  {
+    id: 'photo-11',
+    src: 'https://images.unsplash.com/photo-1537633552985-df8429e8048b?q=80&w=1000',
+    desc: 'Graduation portrait'
+  },
+  {
+    id: 'photo-12',
+    src: 'https://images.unsplash.com/photo-1537511446984-935f663eb1f4?q=80&w=1000',
+    desc: 'Corporate event'
+  },
+  {
+    id: 'photo-13',
+    src: 'https://images.unsplash.com/photo-1502163140606-888448ae8cfe?q=80&w=1000',
+    desc: 'Wedding reception'
+  },
+  {
+    id: 'photo-14',
+    src: 'https://images.unsplash.com/photo-1523354177913-be035fcee55e?q=80&w=1000',
+    desc: 'Sports photography'
+  },
+  {
+    id: 'photo-15',
+    src: 'https://images.unsplash.com/photo-1619462729253-509057d96327?q=80&w=1000',
+    desc: 'Portrait in studio'
+  },
+  {
+    id: 'photo-16',
+    src: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?q=80&w=1000',
+    desc: 'Child portrait'
+  },
+  {
+    id: 'photo-17',
+    src: 'https://images.unsplash.com/photo-1508921912186-1d1a45ebb3c1?q=80&w=1000',
+    desc: 'Wedding detail shot'
+  },
+  {
+    id: 'photo-18',
+    src: 'https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?q=80&w=1000',
+    desc: 'Urban portrait'
+  },
+  {
+    id: 'photo-19',
+    src: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1000',
+    desc: 'Close-up portrait'
+  },
+  {
+    id: 'photo-20',
+    src: 'https://images.unsplash.com/photo-1505503693641-1926193e8d57?q=80&w=1000',
+    desc: 'Engagement photo'
+  },
+  {
+    id: 'photo-21',
+    src: 'https://images.unsplash.com/photo-1621190611717-0c4d4d606cae?q=80&w=1000',
+    desc: 'Real estate photography'
+  },
+  {
+    id: 'photo-22',
+    src: 'https://images.unsplash.com/photo-1626104800582-18121be41b5d?q=80&w=1000',
+    desc: 'Wedding portrait'
+  },
+  {
+    id: 'photo-23',
+    src: 'https://images.unsplash.com/photo-1509335035496-c47fc836517f?q=80&w=1000',
+    desc: 'Event photography, party'
+  },
+  {
+    id: 'photo-24',
+    src: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=1000',
+    desc: 'Fashion portrait'
+  }
+];
+
 // Generate sample photos for demo purposes
 const generateSamplePhotos = (count: number): Photo[] => {
-  return Array.from({ length: count }).map((_, i) => {
-    const id = `photo-${i + 1}`;
+  return sampleImages.slice(0, count).map((image, i) => {
     const hasWatermark = Math.random() > 0.5;
+    const photographer = ['John Smith', 'Sarah Jones', 'Miguel Rodriguez'][Math.floor(Math.random() * 3)];
+    const eventType = ['Wedding', 'Corporate Event', 'Birthday Party', 'Conference'][Math.floor(Math.random() * 4)];
     
     return {
-      id,
-      src: `https://source.unsplash.com/random/800x600?sig=${i}`,
-      thumbnail: `https://source.unsplash.com/random/400x300?sig=${i}`,
+      id: image.id,
+      src: image.src,
+      thumbnail: image.src,
       price: 5 + Math.floor(Math.random() * 15),
       watermarked: hasWatermark,
       selected: false,
-      photographer: ['John Smith', 'Sarah Jones', 'Miguel Rodriguez'][Math.floor(Math.random() * 3)],
+      photographer,
       date: new Date().toISOString().split('T')[0],
-      eventDate: ['Wedding', 'Corporate Event', 'Birthday Party', 'Conference'][Math.floor(Math.random() * 4)],
+      eventDate: eventType,
+      metadata: {
+        description: image.desc
+      }
     };
   });
 };
