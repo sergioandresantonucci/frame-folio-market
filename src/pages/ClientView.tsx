@@ -1,11 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { PhotoProvider, usePhotoContext } from '@/context/PhotoContext';
 import { PhotoGrid } from '@/components/PhotoGrid';
 import { PhotoViewer } from '@/components/PhotoViewer';
 import { CartModal } from '@/components/CartModal';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ShoppingCart, CreditCard } from 'lucide-react';
+import { ChevronLeft, ShoppingCart, CreditCard, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';

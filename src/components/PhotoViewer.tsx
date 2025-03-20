@@ -17,16 +17,21 @@ import {
   CreditCard,
   ScanFace,
   Euro,
-  ShoppingCart
+  ShoppingCart,
+  Printer
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
 export const PhotoViewer: React.FC = () => {
   const { state, setActivePhoto, addToCart, toggleCart } = usePhotoContext();
   const [zoomLevel, setZoomLevel] = useState(100);
   const [rotation, setRotation] = useState(0);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const [printFormat, setPrintFormat] = useState('a4');
   const activePhoto = state.activePhoto;
 
   useEffect(() => {
@@ -88,9 +93,29 @@ export const PhotoViewer: React.FC = () => {
     }
   };
 
+  const handlePrintPhoto = () => {
+    if (!activePhoto) return;
+    setShowPrintDialog(true);
+  };
+
+  const handlePrintOrderSubmit = () => {
+    toast.success(`Ordine di stampa in formato ${printFormat.toUpperCase()} aggiunto al carrello`);
+    if (activePhoto) {
+      addToCart(activePhoto.id);
+    }
+    setShowPrintDialog(false);
+    toggleCart();
+  };
+
   if (!activePhoto) return null;
 
   const isInCart = state.cartItems.includes(activePhoto.id);
+
+  const printFormatPrices = {
+    a3: 12.99,
+    a4: 8.99,
+    a5: 5.99,
+  };
 
   return (
     <Dialog open={!!activePhoto} onOpenChange={(open) => !open && handleClose()}>
@@ -232,6 +257,14 @@ export const PhotoViewer: React.FC = () => {
               </Button>
               
               <Button
+                variant="outline"
+                onClick={handlePrintPhoto}
+              >
+                <Printer className="h-4 w-4 mr-2" />
+                Stampa
+              </Button>
+              
+              <Button
                 className="bg-magenta hover:bg-magenta/90"
                 onClick={() => toggleCart()}
               >
@@ -274,7 +307,7 @@ export const PhotoViewer: React.FC = () => {
                 onClick={handlePaymentSuccess}
               >
                 <svg viewBox="0 0 24 24" className="h-6 w-6">
-                  <path d="M20.067 8.478c.492.88.556 2.014.3 3.327-.74 3.806-3.276 5.12-6.514 5.12h-.5a.805.805 0 0 0-.794.68l-.04.22-.63 4.026-.024.13a.804.804 0 0 1-.794.68h-2.52a.483.483 0 0 1-.477-.558l.79-5.02c.036-.222.226-.374.45-.374h1.307c3.905 0 6.214-2.168 7.066-5.130a4.21 4.21 0 0 0-.173-3.1" fill="#253d80"></path>
+                  <path d="M20.067 8.478c.492.88.556 2.014.3 3.327-.74 3.806-3.276 5.12-6.514 5.12h-.5a.805.805 0 0 0-.794.68l-.04.22-.63 4.026-.024.13a.804.804 0 0 1-.794.68h-2.52a.483.483 0 0 1-.477-.558l.79-5.02c.036-.222.226-.374.45-.374h1.307c3.905 0 6.214-2.168 7.066-5.13a4.21 4.21 0 0 0-.173-3.1" fill="#253d80"></path>
                   <path d="M18.036 3.416c.63 3.488-2.818 7.14-6.62 7.14h-1.686a.483.483 0 0 0-.477.558l.79 5.016c.035.222.226.374.45.374h2.52a.805.805 0 0 0 .795-.68l.03-.17.59-3.736.038-.206a.804.804 0 0 1 .794-.68h.5c3.238 0 5.775-1.314 6.514-5.12.31-1.604.15-2.947-.722-3.894a3.4 3.4 0 0 0-1.023-.755" fill="#189bd7"></path>
                   <path d="M9.486 3.412a.483.483 0 0 1 .477-.558h6.05a6.23 6.23 0 0 1 1.314.141c.012 0 .025.004.036.004.313.07.6.17.86.302a4.77 4.77 0 0 0-1.22-2.956C16.07-.681 14.13.114 11.75.114H5.924a.805.805 0 0 0-.795.68L2.004 15.48a.483.483 0 0 0 .477.557h3.482l.88-5.563-.001-.038z" fill="#242e65"></path>
                 </svg>
@@ -311,6 +344,87 @@ export const PhotoViewer: React.FC = () => {
             <Download className="h-4 w-4 mr-2" />
             Paga €{activePhoto.price.toFixed(2)} e scarica
           </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Print Dialog */}
+      <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Ordina stampa fotografica</DialogTitle>
+            <DialogDescription>
+              Seleziona il formato di stampa desiderato
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Formato di stampa</Label>
+              <RadioGroup 
+                defaultValue="a4" 
+                value={printFormat} 
+                onValueChange={setPrintFormat} 
+                className="grid grid-cols-1 gap-2"
+              >
+                <div className="flex items-center justify-between p-2 border rounded-md">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="a3" id="print-a3" />
+                    <Label htmlFor="print-a3" className="font-normal">A3 (297 × 420 mm)</Label>
+                  </div>
+                  <span className="text-sm font-medium">€{printFormatPrices.a3.toFixed(2)}</span>
+                </div>
+                
+                <div className="flex items-center justify-between p-2 border rounded-md">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="a4" id="print-a4" />
+                    <Label htmlFor="print-a4" className="font-normal">A4 (210 × 297 mm)</Label>
+                  </div>
+                  <span className="text-sm font-medium">€{printFormatPrices.a4.toFixed(2)}</span>
+                </div>
+                
+                <div className="flex items-center justify-between p-2 border rounded-md">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="a5" id="print-a5" />
+                    <Label htmlFor="print-a5" className="font-normal">A5 (148 × 210 mm)</Label>
+                  </div>
+                  <span className="text-sm font-medium">€{printFormatPrices.a5.toFixed(2)}</span>
+                </div>
+              </RadioGroup>
+            </div>
+            
+            <div className="bg-gray-50 p-4 rounded-md flex items-center justify-between mt-4">
+              <span>Costo stampa:</span>
+              <span className="font-medium">€{printFormatPrices[printFormat as keyof typeof printFormatPrices].toFixed(2)}</span>
+            </div>
+            
+            <div className="text-sm text-gray-500 mt-2">
+              <p>Informazioni di stampa:</p>
+              <ul className="list-disc pl-5 mt-1 space-y-1">
+                <li>Carta fotografica premium</li>
+                <li>Colori brillanti e definiti</li>
+                <li>Spedizione in 3-5 giorni lavorativi</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="flex justify-between">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setShowPrintDialog(false)}
+            >
+              Annulla
+            </Button>
+            
+            <Button 
+              type="button" 
+              className="bg-magenta hover:bg-magenta/90"
+              onClick={handlePrintOrderSubmit}
+            >
+              <Printer className="h-4 w-4 mr-2" />
+              Aggiungi al carrello
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </Dialog>
