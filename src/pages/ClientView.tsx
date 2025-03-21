@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PhotoProvider, usePhotoContext } from '@/context/PhotoContext';
 import { PhotoGrid } from '@/components/PhotoGrid';
 import { PhotoViewer } from '@/components/PhotoViewer';
@@ -16,6 +16,20 @@ const ClientViewContent: React.FC = () => {
   const { state, setDisplayMode, toggleCart, addToCart } = usePhotoContext();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+
+  // Apply stored filters when component mounts or selected photos change
+  useEffect(() => {
+    // Apply any stored filters to images
+    state.photos.forEach(photo => {
+      const savedFilter = sessionStorage.getItem(`filter-${photo.id}`);
+      if (savedFilter) {
+        const photoElement = document.querySelector(`[data-photo-id="${photo.id}"] img`) as HTMLImageElement;
+        if (photoElement) {
+          photoElement.style.filter = savedFilter;
+        }
+      }
+    });
+  }, [state.photos]);
 
   const exitClientView = () => {
     setDisplayMode('grid');

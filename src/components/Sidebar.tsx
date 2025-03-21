@@ -53,14 +53,13 @@ export const Sidebar: React.FC = () => {
       return;
     }
     
-    // In a real app, we would apply these adjustments to the actual image
-    // For demonstration purposes, we'll just show a toast and apply some CSS filters
+    // Find the active photo element and apply CSS filters
     const photoId = state.activePhoto.id;
     const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
     
     if (photoElement) {
       // Apply CSS filters directly to the image
-      photoElement.style.filter = `
+      const filterString = `
         brightness(${1 + brightness/100})
         contrast(${1 + contrast/100})
         saturate(${1 + saturation/100})
@@ -68,16 +67,60 @@ export const Sidebar: React.FC = () => {
         ${temperature < 0 ? `hue-rotate(${temperature * 1.8}deg)` : ''}
       `;
       
+      photoElement.style.filter = filterString;
+      
+      // Store the filter in sessionStorage to persist through renders
+      sessionStorage.setItem(`filter-${photoId}`, filterString);
+      
       toast.success(`Applied adjustments to photo: 
         Brightness: ${brightness}, 
         Contrast: ${contrast}, 
         Saturation: ${saturation}, 
         Temperature: ${temperature}`);
     } else {
-      // If we can't find the element, at least show a success message
-      toast.success(`Applied adjustments: Brightness: ${brightness}, Contrast: ${contrast}, Saturation: ${saturation}, Temperature: ${temperature}`);
+      toast.error("Could not find the selected photo element");
     }
   };
+
+  // Restore filters from sessionStorage when component mounts or active photo changes
+  useEffect(() => {
+    if (state.activePhoto) {
+      const photoId = state.activePhoto.id;
+      const savedFilter = sessionStorage.getItem(`filter-${photoId}`);
+      
+      if (savedFilter) {
+        const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
+        if (photoElement) {
+          photoElement.style.filter = savedFilter;
+        }
+        
+        // Try to extract values from saved filter
+        const brightnessMatch = savedFilter.match(/brightness\(([0-9.]+)\)/);
+        const contrastMatch = savedFilter.match(/contrast\(([0-9.]+)\)/);
+        const saturateMatch = savedFilter.match(/saturate\(([0-9.]+)\)/);
+        const sepiaMatch = savedFilter.match(/sepia\(([0-9.]+)\)/);
+        const hueRotateMatch = savedFilter.match(/hue-rotate\(([0-9.-]+)deg\)/);
+        
+        if (brightnessMatch) setBrightness(Math.round((parseFloat(brightnessMatch[1]) - 1) * 100));
+        if (contrastMatch) setContrast(Math.round((parseFloat(contrastMatch[1]) - 1) * 100));
+        if (saturateMatch) setSaturation(Math.round((parseFloat(saturateMatch[1]) - 1) * 100));
+        
+        if (sepiaMatch) {
+          setTemperature(Math.round(parseFloat(sepiaMatch[1]) * 100));
+        } else if (hueRotateMatch) {
+          setTemperature(Math.round(parseFloat(hueRotateMatch[1]) / 1.8));
+        } else {
+          setTemperature(0);
+        }
+      } else {
+        // Reset sliders if no saved filter
+        setBrightness(0);
+        setContrast(0);
+        setSaturation(0);
+        setTemperature(0);
+      }
+    }
+  }, [state.activePhoto]);
 
   // Apply auto-fix to selected photo
   const applyAutoFix = () => {
@@ -133,6 +176,7 @@ export const Sidebar: React.FC = () => {
       
       if (photoElement) {
         photoElement.style.filter = 'none';
+        sessionStorage.removeItem(`filter-${photoId}`);
         toast.info("Adjustments reset");
       }
     }
@@ -145,7 +189,7 @@ export const Sidebar: React.FC = () => {
     <aside
       className={cn(
         "h-[calc(100vh-4rem)] flex flex-col border-r border-gray-100 bg-white transition-all duration-300 ease-in-out",
-        collapsed ? "w-16" : "w-72"
+        collapsed ? "w-16" : "w-80" // Increased width from w-72 to w-80
       )}
     >
       <div className="flex items-center justify-between p-4 h-14 border-b border-gray-100">
@@ -165,7 +209,7 @@ export const Sidebar: React.FC = () => {
         </Button>
       </div>
 
-      <div className="flex-grow overflow-y-auto p-2 space-y-2">
+      <div className="flex-grow overflow-y-auto p-3 space-y-3">
         <div className="flex flex-wrap gap-2">
           <Button 
             variant={activeTab === 'filters' ? 'default' : 'outline'} 
