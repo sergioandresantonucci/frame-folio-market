@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
@@ -29,14 +29,62 @@ import {
   Move
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 export const Sidebar: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<'filters' | 'adjustments' | 'pricing' | 'watermark' | 'face'>('filters');
-  const { state, setFilters } = usePhotoContext();
+  const { state, setFilters, setActivePhoto } = usePhotoContext();
+  
+  // State for color adjustments
+  const [brightness, setBrightness] = useState<number>(0);
+  const [contrast, setContrast] = useState<number>(0);
+  const [saturation, setSaturation] = useState<number>(0);
+  const [temperature, setTemperature] = useState<number>(0);
 
   const toggleCollapse = () => {
     setCollapsed(prev => !prev);
+  };
+
+  // Apply color adjustments function
+  const applyColorAdjustments = () => {
+    if (!state.activePhoto || state.photos.length === 0) {
+      toast.error("Please select a photo to apply adjustments");
+      return;
+    }
+    
+    // Here we would actually apply the adjustments to the image
+    // For demo purposes just show a toast
+    toast.success(`Applied adjustments to selected photo: Brightness: ${brightness}, Contrast: ${contrast}, Saturation: ${saturation}, Temperature: ${temperature}`);
+    
+    // Auto-reset values after applying
+    setTimeout(() => {
+      setBrightness(0);
+      setContrast(0);
+      setSaturation(0);
+      setTemperature(0);
+    }, 500);
+  };
+
+  // Apply auto-fix to selected photo
+  const applyAutoFix = () => {
+    if (!state.activePhoto) {
+      toast.error("Please select a photo to apply auto fix");
+      return;
+    }
+    
+    // Set some values that look like auto-adjustment
+    setBrightness(10);
+    setContrast(15);
+    setSaturation(5);
+    setTemperature(-3);
+    
+    toast.success("Auto adjustment applied");
+    
+    // Actually apply the changes after a short delay
+    setTimeout(() => {
+      applyColorAdjustments();
+    }, 300);
   };
 
   const photographers = ['All Photographers', 'John Smith', 'Sarah Jones', 'Miguel Rodriguez'];
@@ -218,45 +266,97 @@ export const Sidebar: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="brightness">Brightness</Label>
-                    <Badge variant="outline" className="font-mono">0</Badge>
+                    <Badge variant="outline" className="font-mono">{brightness}</Badge>
                   </div>
-                  <Slider id="brightness" defaultValue={[0]} min={-100} max={100} step={1} />
+                  <Slider 
+                    id="brightness" 
+                    value={[brightness]} 
+                    min={-100} 
+                    max={100} 
+                    step={1} 
+                    onValueChange={(values) => setBrightness(values[0])}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="contrast">Contrast</Label>
-                    <Badge variant="outline" className="font-mono">0</Badge>
+                    <Badge variant="outline" className="font-mono">{contrast}</Badge>
                   </div>
-                  <Slider id="contrast" defaultValue={[0]} min={-100} max={100} step={1} />
+                  <Slider 
+                    id="contrast" 
+                    value={[contrast]} 
+                    min={-100} 
+                    max={100} 
+                    step={1} 
+                    onValueChange={(values) => setContrast(values[0])}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="saturation">Saturation</Label>
-                    <Badge variant="outline" className="font-mono">0</Badge>
+                    <Badge variant="outline" className="font-mono">{saturation}</Badge>
                   </div>
-                  <Slider id="saturation" defaultValue={[0]} min={-100} max={100} step={1} />
+                  <Slider 
+                    id="saturation" 
+                    value={[saturation]} 
+                    min={-100} 
+                    max={100} 
+                    step={1} 
+                    onValueChange={(values) => setSaturation(values[0])}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="temperature">Temperature</Label>
-                    <Badge variant="outline" className="font-mono">0</Badge>
+                    <Badge variant="outline" className="font-mono">{temperature}</Badge>
                   </div>
-                  <Slider id="temperature" defaultValue={[0]} min={-100} max={100} step={1} />
+                  <Slider 
+                    id="temperature" 
+                    value={[temperature]} 
+                    min={-100} 
+                    max={100} 
+                    step={1} 
+                    onValueChange={(values) => setTemperature(values[0])}
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 mt-4">
-                  <Button size="sm" variant="outline" className="flex items-center gap-1">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="flex items-center gap-1"
+                    onClick={applyAutoFix}
+                  >
                     <Wand2 className="h-4 w-4" />
                     Auto Fix
                   </Button>
-                  <Button size="sm" variant="outline" className="flex items-center gap-1">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="flex items-center gap-1"
+                    onClick={() => {
+                      toast.info("Applying 'Vibrant' preset");
+                      setBrightness(10);
+                      setContrast(20);
+                      setSaturation(30);
+                      setTemperature(5);
+                    }}
+                  >
                     <Layers className="h-4 w-4" />
                     Presets
                   </Button>
                 </div>
+
+                <Button 
+                  className="w-full bg-magenta hover:bg-magenta/90 mt-4"
+                  onClick={applyColorAdjustments}
+                  disabled={!state.activePhoto}
+                >
+                  Apply Adjustments
+                </Button>
               </div>
             )}
 

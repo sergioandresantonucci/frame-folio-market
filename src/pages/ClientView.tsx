@@ -9,10 +9,12 @@ import { ChevronLeft, ShoppingCart, CreditCard, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ClientViewContent: React.FC = () => {
   const { state, setDisplayMode, toggleCart, addToCart } = usePhotoContext();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const exitClientView = () => {
     setDisplayMode('grid');
@@ -24,12 +26,12 @@ const ClientViewContent: React.FC = () => {
       return;
     }
     
-    // Aggiungi ogni foto selezionata al carrello
+    // Add each selected photo to the cart
     state.selectedIds.forEach(id => {
       addToCart(id);
     });
     
-    // Apri il carrello dopo aver aggiunto le foto
+    // Open the cart after adding photos
     toggleCart();
   };
 
@@ -91,6 +93,21 @@ const ClientViewContent: React.FC = () => {
         <PhotoViewer />
         <CartModal />
       </main>
+
+      {/* Floating cart button */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <Button
+          onClick={toggleCart}
+          className="bg-magenta hover:bg-magenta/90 rounded-full h-14 w-14 shadow-lg flex items-center justify-center relative"
+        >
+          <ShoppingCart className="h-6 w-6" />
+          {state.cartItems.length > 0 && (
+            <Badge className="absolute -top-2 -right-2 bg-white text-magenta border-0 h-6 min-w-6 flex items-center justify-center p-0">
+              {state.cartItems.length}
+            </Badge>
+          )}
+        </Button>
+      </div>
     </div>
   );
 };

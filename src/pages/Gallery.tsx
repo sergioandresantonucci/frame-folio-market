@@ -10,8 +10,9 @@ import { detectFaces } from '@/utils/faceDetection';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { FloatingCart } from '@/components/FloatingCart';
+import { CartModal } from '@/components/CartModal';
 
-// Sample photography images from Unsplash
 const sampleImages = [
   {
     id: 'photo-1',
@@ -135,7 +136,6 @@ const sampleImages = [
   }
 ];
 
-// Generate sample photos for demo purposes
 const generateSamplePhotos = (count: number): Photo[] => {
   return sampleImages.slice(0, count).map((image, i) => {
     const hasWatermark = Math.random() > 0.5;
@@ -165,17 +165,13 @@ const GalleryContent: React.FC = () => {
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    // Load sample photos on first render if gallery is empty
     if (state.photos.length === 0) {
       const samplePhotos = generateSamplePhotos(24);
       addPhotos(samplePhotos);
       
-      // Toast notification
       toast.success(`Loaded ${samplePhotos.length} sample photos`);
       
-      // Simulate face detection for some photos
       const processPhotosWithFaces = async () => {
-        // Process a few random photos for face detection
         const photoIndexesToProcess = Array.from({ length: 8 })
           .map(() => Math.floor(Math.random() * samplePhotos.length));
         
@@ -200,12 +196,10 @@ const GalleryContent: React.FC = () => {
         toast.success('Face detection completed!');
       };
       
-      // Run face detection after a delay
       setTimeout(processPhotosWithFaces, 2000);
     }
   }, []);
 
-  // Render client view if in client display mode
   if (state.displayMode === 'client') {
     return (
       <div className="fixed inset-0 p-0 bg-black flex flex-col">
@@ -223,6 +217,8 @@ const GalleryContent: React.FC = () => {
         <div className="flex-grow p-4 md:p-8 overflow-auto">
           <PhotoGrid className="max-w-7xl mx-auto" />
         </div>
+        <FloatingCart />
+        <CartModal />
       </div>
     );
   }
@@ -266,6 +262,8 @@ const GalleryContent: React.FC = () => {
         
         <PhotoGrid />
         <PhotoViewer />
+        <CartModal />
+        <FloatingCart />
       </div>
     </Layout>
   );

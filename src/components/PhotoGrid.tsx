@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface PhotoGridProps {
   className?: string;
@@ -39,6 +40,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
   const [ctrlKeyActive, setCtrlKeyActive] = useState(false);
   const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   // Filter photos based on active filters
   const filteredPhotos = state.photos.filter(photo => {
@@ -161,6 +163,19 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
     addToCart(id);
   };
 
+  const handleAddSelectedToCart = () => {
+    if (state.selectedIds.length === 0) {
+      toast.warning("Please select photos to add to cart");
+      return;
+    }
+    
+    state.selectedIds.forEach(id => {
+      addToCart(id);
+    });
+    
+    toast.success(`Added ${state.selectedIds.length} photos to cart`);
+  };
+
   if (filteredPhotos.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] text-center">
@@ -202,6 +217,16 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
               <Button 
                 variant="outline" 
                 size="sm" 
+                className="flex items-center gap-1 bg-magenta text-white hover:bg-magenta/90"
+                onClick={handleAddSelectedToCart}
+              >
+                <ShoppingCart className="h-4 w-4" />
+                Add to Cart
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
                 className="flex items-center gap-1 text-red-500 hover:text-red-600 hover:border-red-200"
                 onClick={handleBulkDelete}
               >
@@ -215,7 +240,10 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
       
       <div 
         ref={containerRef}
-        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+        className={cn(
+          "grid gap-4",
+          isMobile ? "grid-cols-1" : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        )}
       >
         {filteredPhotos.map((photo, index) => (
           <Card 
