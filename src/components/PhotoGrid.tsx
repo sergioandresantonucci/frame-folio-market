@@ -114,17 +114,30 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
         selectPhoto(photo.id);
       }
     } else {
-      if (state.selectedIds.length === 1 && state.selectedIds[0] === photo.id) {
-        // Double-click behavior: open the photo viewer
-        setActivePhoto(photo.id);
+      // Modified to toggle selection without clearing previous selections
+      if (state.selectedIds.includes(photo.id)) {
+        // If already selected, deselect it
+        deselectPhoto(photo.id);
       } else {
-        clearSelection();
+        // If not selected, select it without clearing others
         selectPhoto(photo.id);
       }
+      
+      // Double-click behavior: check if it's a quick second click
+      const now = Date.now();
+      if (lastClickedPhoto.id === photo.id && now - lastClickedPhoto.time < 300) {
+        setActivePhoto(photo.id);
+      }
+      
+      // Update last clicked photo info
+      setLastClickedPhoto({ id: photo.id, time: now });
     }
     
     setLastClickedIndex(index);
   };
+  
+  // Track the last clicked photo and timestamp to detect double-clicks
+  const [lastClickedPhoto, setLastClickedPhoto] = useState<{id: string, time: number}>({id: '', time: 0});
 
   const handlePriceChange = (id: string, price: string) => {
     const numericPrice = parseFloat(price);

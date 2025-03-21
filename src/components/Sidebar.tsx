@@ -48,22 +48,35 @@ export const Sidebar: React.FC = () => {
 
   // Apply color adjustments function
   const applyColorAdjustments = () => {
-    if (!state.activePhoto || state.photos.length === 0) {
+    if (!state.activePhoto) {
       toast.error("Please select a photo to apply adjustments");
       return;
     }
     
-    // Here we would actually apply the adjustments to the image
-    // For demo purposes just show a toast
-    toast.success(`Applied adjustments to selected photo: Brightness: ${brightness}, Contrast: ${contrast}, Saturation: ${saturation}, Temperature: ${temperature}`);
+    // In a real app, we would apply these adjustments to the actual image
+    // For demonstration purposes, we'll just show a toast and apply some CSS filters
+    const photoId = state.activePhoto.id;
+    const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
     
-    // Auto-reset values after applying
-    setTimeout(() => {
-      setBrightness(0);
-      setContrast(0);
-      setSaturation(0);
-      setTemperature(0);
-    }, 500);
+    if (photoElement) {
+      // Apply CSS filters directly to the image
+      photoElement.style.filter = `
+        brightness(${1 + brightness/100})
+        contrast(${1 + contrast/100})
+        saturate(${1 + saturation/100})
+        ${temperature > 0 ? `sepia(${temperature/100})` : ''}
+        ${temperature < 0 ? `hue-rotate(${temperature * 1.8}deg)` : ''}
+      `;
+      
+      toast.success(`Applied adjustments to photo: 
+        Brightness: ${brightness}, 
+        Contrast: ${contrast}, 
+        Saturation: ${saturation}, 
+        Temperature: ${temperature}`);
+    } else {
+      // If we can't find the element, at least show a success message
+      toast.success(`Applied adjustments: Brightness: ${brightness}, Contrast: ${contrast}, Saturation: ${saturation}, Temperature: ${temperature}`);
+    }
   };
 
   // Apply auto-fix to selected photo
@@ -73,7 +86,7 @@ export const Sidebar: React.FC = () => {
       return;
     }
     
-    // Set some values that look like auto-adjustment
+    // Set some good looking auto-adjustment values
     setBrightness(10);
     setContrast(15);
     setSaturation(5);
@@ -81,10 +94,48 @@ export const Sidebar: React.FC = () => {
     
     toast.success("Auto adjustment applied");
     
-    // Actually apply the changes after a short delay
+    // Apply the changes after a short delay
     setTimeout(() => {
       applyColorAdjustments();
     }, 300);
+  };
+
+  // Apply a vibrant preset
+  const applyVibrantPreset = () => {
+    if (!state.activePhoto) {
+      toast.error("Please select a photo to apply preset");
+      return;
+    }
+    
+    toast.info("Applying 'Vibrant' preset");
+    setBrightness(10);
+    setContrast(20);
+    setSaturation(30);
+    setTemperature(5);
+    
+    // Apply the changes after a short delay
+    setTimeout(() => {
+      applyColorAdjustments();
+    }, 300);
+  };
+
+  // Reset adjustments
+  const resetAdjustments = () => {
+    setBrightness(0);
+    setContrast(0);
+    setSaturation(0);
+    setTemperature(0);
+    
+    // If there's an active photo, reset its filters
+    if (state.activePhoto) {
+      const photoId = state.activePhoto.id;
+      const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
+      
+      if (photoElement) {
+        photoElement.style.filter = 'none';
+        toast.info("Adjustments reset");
+      }
+    }
   };
 
   const photographers = ['All Photographers', 'John Smith', 'Sarah Jones', 'Miguel Rodriguez'];
@@ -337,26 +388,32 @@ export const Sidebar: React.FC = () => {
                     size="sm" 
                     variant="outline" 
                     className="flex items-center gap-1"
-                    onClick={() => {
-                      toast.info("Applying 'Vibrant' preset");
-                      setBrightness(10);
-                      setContrast(20);
-                      setSaturation(30);
-                      setTemperature(5);
-                    }}
+                    onClick={applyVibrantPreset}
                   >
                     <Layers className="h-4 w-4" />
                     Presets
                   </Button>
                 </div>
 
-                <Button 
-                  className="w-full bg-magenta hover:bg-magenta/90 mt-4"
-                  onClick={applyColorAdjustments}
-                  disabled={!state.activePhoto}
-                >
-                  Apply Adjustments
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex items-center gap-1"
+                    onClick={resetAdjustments}
+                  >
+                    Reset
+                  </Button>
+                  
+                  <Button 
+                    size="sm"
+                    className="bg-magenta hover:bg-magenta/90"
+                    onClick={applyColorAdjustments}
+                    disabled={!state.activePhoto}
+                  >
+                    Apply
+                  </Button>
+                </div>
               </div>
             )}
 

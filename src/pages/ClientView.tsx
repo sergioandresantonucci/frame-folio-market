@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { FloatingCart } from '@/components/FloatingCart';
 
 const ClientViewContent: React.FC = () => {
   const { state, setDisplayMode, toggleCart, addToCart } = usePhotoContext();
@@ -94,20 +95,7 @@ const ClientViewContent: React.FC = () => {
         <CartModal />
       </main>
 
-      {/* Floating cart button */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <Button
-          onClick={toggleCart}
-          className="bg-magenta hover:bg-magenta/90 rounded-full h-14 w-14 shadow-lg flex items-center justify-center relative"
-        >
-          <ShoppingCart className="h-6 w-6" />
-          {state.cartItems.length > 0 && (
-            <Badge className="absolute -top-2 -right-2 bg-white text-magenta border-0 h-6 min-w-6 flex items-center justify-center p-0">
-              {state.cartItems.length}
-            </Badge>
-          )}
-        </Button>
-      </div>
+      <FloatingCart />
     </div>
   );
 };
