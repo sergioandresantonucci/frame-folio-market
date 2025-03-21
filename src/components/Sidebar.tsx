@@ -30,11 +30,13 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export const Sidebar: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<'filters' | 'adjustments' | 'pricing' | 'watermark' | 'face'>('filters');
   const { state, setFilters, setActivePhoto } = usePhotoContext();
+  const isMobile = useIsMobile();
   
   // State for color adjustments
   const [brightness, setBrightness] = useState<number>(0);
@@ -210,70 +212,73 @@ export const Sidebar: React.FC = () => {
       </div>
 
       <div className="flex-grow overflow-y-auto p-3 space-y-3">
-        <div className="flex flex-wrap gap-2">
+        <div className={cn(
+          "flex flex-wrap gap-2",
+          isMobile && "flex-col"
+        )}>
           <Button 
             variant={activeTab === 'filters' ? 'default' : 'outline'} 
-            size="icon"
+            size={isMobile ? "sm" : "icon"}
             className={cn(
-              "h-10 w-10",
+              isMobile ? "w-full justify-start" : "h-10 w-10",
               activeTab === 'filters' && "bg-magenta hover:bg-magenta/90"
             )}
             onClick={() => setActiveTab('filters')}
-            title="Filters"
           >
-            <Sliders className="h-5 w-5" />
+            <Sliders className="h-5 w-5 mr-2" />
+            {isMobile && "Filters"}
           </Button>
 
           <Button 
             variant={activeTab === 'adjustments' ? 'default' : 'outline'} 
-            size="icon"
+            size={isMobile ? "sm" : "icon"}
             className={cn(
-              "h-10 w-10",
+              isMobile ? "w-full justify-start" : "h-10 w-10",
               activeTab === 'adjustments' && "bg-magenta hover:bg-magenta/90"
             )}
             onClick={() => setActiveTab('adjustments')}
-            title="Color Correction"
           >
-            <Palette className="h-5 w-5" />
+            <Palette className="h-5 w-5 mr-2" />
+            {isMobile && "Color Correction"}
           </Button>
 
           <Button 
             variant={activeTab === 'pricing' ? 'default' : 'outline'} 
-            size="icon"
+            size={isMobile ? "sm" : "icon"}
             className={cn(
-              "h-10 w-10",
+              isMobile ? "w-full justify-start" : "h-10 w-10",
               activeTab === 'pricing' && "bg-magenta hover:bg-magenta/90"
             )}
             onClick={() => setActiveTab('pricing')}
-            title="Pricing"
           >
-            <CircleDollarSign className="h-5 w-5" />
+            <CircleDollarSign className="h-5 w-5 mr-2" />
+            {isMobile && "Pricing"}
           </Button>
 
           <Button 
             variant={activeTab === 'watermark' ? 'default' : 'outline'} 
-            size="icon"
+            size={isMobile ? "sm" : "icon"}
             className={cn(
-              "h-10 w-10",
+              isMobile ? "w-full justify-start" : "h-10 w-10",
               activeTab === 'watermark' && "bg-magenta hover:bg-magenta/90"
             )}
             onClick={() => setActiveTab('watermark')}
-            title="Watermark"
           >
-            <Image className="h-5 w-5" />
+            <Image className="h-5 w-5 mr-2" />
+            {isMobile && "Watermark"}
           </Button>
 
           <Button 
             variant={activeTab === 'face' ? 'default' : 'outline'} 
-            size="icon"
+            size={isMobile ? "sm" : "icon"}
             className={cn(
-              "h-10 w-10",
+              isMobile ? "w-full justify-start" : "h-10 w-10",
               activeTab === 'face' && "bg-magenta hover:bg-magenta/90"
             )}
             onClick={() => setActiveTab('face')}
-            title="Face Detection"
           >
-            <ScanFace className="h-5 w-5" />
+            <ScanFace className="h-5 w-5 mr-2" />
+            {isMobile && "Face Detection"}
           </Button>
         </div>
 

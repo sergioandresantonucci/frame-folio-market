@@ -29,7 +29,7 @@ const ClientViewContent: React.FC = () => {
         }
       }
     });
-  }, [state.photos]);
+  }, [state.photos, state.selectedIds]); // Added state.selectedIds as dependency
 
   const exitClientView = () => {
     setDisplayMode('grid');
