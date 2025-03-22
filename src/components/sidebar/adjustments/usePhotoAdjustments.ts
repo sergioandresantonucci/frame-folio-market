@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { usePhotoContext } from '@/context/photo/PhotoContext';
 import { toast } from 'sonner';
@@ -38,6 +37,9 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
   const [temperature, setTemperature] = useState<number>(0);
   const [clarity, setClarity] = useState<number>(0);
   const [highlights, setHighlights] = useState<number>(0);
+  
+  // Keep track of processed photos to avoid processing the same photo multiple times
+  const [processedPhotoId, setProcessedPhotoId] = useState<string | null>(null);
 
   // Check if we have an active photo
   const hasActivePhoto = Boolean(state.activePhoto);
@@ -74,7 +76,9 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
     console.log("Generated filter string:", filterString);
     
     // Apply the filter to all photo elements
-    if (applyFilterToElements(photoId, filterString)) {
+    const success = applyFilterToElements(photoId, filterString);
+    
+    if (success) {
       // Store the filter in sessionStorage to persist through renders
       saveFilterToStorage(photoId, filterString);
       
@@ -95,28 +99,40 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
     saveToHistory
   ]);
 
-  // Restore filters from sessionStorage when active photo changes
+  // Monitor active photo changes and restore filters
   useEffect(() => {
-    if (state.activePhoto) {
-      const photoId = state.activePhoto.id;
+    if (!state.activePhoto) return;
+    
+    const photoId = state.activePhoto.id;
+    
+    // Prevent processing the same photo multiple times if it's already loaded
+    if (processedPhotoId === photoId) return;
+    
+    console.log("Active photo changed to:", photoId);
+    setProcessedPhotoId(photoId);
+    
+    // Allow time for DOM elements to render
+    const timer = setTimeout(() => {
       const savedFilter = getFilterFromStorage(photoId);
       
       if (savedFilter) {
         console.log("Restoring saved filter for", photoId, ":", savedFilter);
         
         // Apply saved filter to DOM elements
-        applyFilterToElements(photoId, savedFilter);
+        const applied = applyFilterToElements(photoId, savedFilter);
         
-        // Extract adjustment values from saved filter
-        const values = extractValuesFromFilter(savedFilter);
-        
-        // Update state with extracted values
-        setBrightness(values.brightness);
-        setContrast(values.contrast);
-        setSaturation(values.saturation);
-        setClarity(values.clarity);
-        setTemperature(values.temperature);
-        setHighlights(values.highlights);
+        if (applied) {
+          // Extract adjustment values from saved filter
+          const values = extractValuesFromFilter(savedFilter);
+          
+          // Update state with extracted values
+          setBrightness(values.brightness);
+          setContrast(values.contrast);
+          setSaturation(values.saturation);
+          setClarity(values.clarity);
+          setTemperature(values.temperature);
+          setHighlights(values.highlights);
+        }
       } else {
         // Reset sliders if no saved filter
         console.log("No saved filter found for", photoId, "resetting sliders");
@@ -127,8 +143,33 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
         setClarity(0);
         setHighlights(0);
       }
-    }
+    }, 300); // Add delay to ensure the DOM is ready
+    
+    return () => clearTimeout(timer);
   }, [state.activePhoto]);
+  
+  // Force apply current filter whenever the viewer is opened or photo changes
+  useEffect(() => {
+    if (!state.activePhoto) return;
+    
+    const photoId = state.activePhoto.id;
+    
+    // Apply the current filter values when the photo viewer is opened
+    const timer = setTimeout(() => {
+      const filterString = buildFilterString(
+        brightness, 
+        contrast, 
+        saturation, 
+        clarity, 
+        temperature, 
+        highlights
+      );
+      
+      applyFilterToElements(photoId, filterString);
+    }, 500); // Delay to ensure the viewer component is fully rendered
+    
+    return () => clearTimeout(timer);
+  }, [state.activePhoto?.id, brightness, contrast, saturation, clarity, temperature, highlights]);
 
   // Undo last adjustment
   const undoAdjustment = useCallback(() => {
@@ -141,24 +182,26 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
       console.log("Restoring previous filter:", previousFilter);
       
       // Apply previous filter to DOM elements
-      applyFilterToElements(photoId, previousFilter);
+      const success = applyFilterToElements(photoId, previousFilter);
       
-      // Update session storage
-      saveFilterToStorage(photoId, previousFilter);
-      
-      // Extract and update adjustment values
-      const values = extractValuesFromFilter(previousFilter);
-      setBrightness(values.brightness);
-      setContrast(values.contrast);
-      setSaturation(values.saturation);
-      setClarity(values.clarity);
-      setTemperature(values.temperature);
-      setHighlights(values.highlights);
-      
-      // Remove this entry from history
-      removeFromHistory(photoId);
-      
-      toast.info("Regolazione precedente ripristinata");
+      if (success) {
+        // Update session storage
+        saveFilterToStorage(photoId, previousFilter);
+        
+        // Extract and update adjustment values
+        const values = extractValuesFromFilter(previousFilter);
+        setBrightness(values.brightness);
+        setContrast(values.contrast);
+        setSaturation(values.saturation);
+        setClarity(values.clarity);
+        setTemperature(values.temperature);
+        setHighlights(values.highlights);
+        
+        // Remove this entry from history
+        removeFromHistory(photoId);
+        
+        toast.info("Regolazione precedente ripristinata");
+      }
     } else {
       toast.info("Nessuna regolazione precedente da annullare");
     }
