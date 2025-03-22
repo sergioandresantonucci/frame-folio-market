@@ -1,4 +1,7 @@
 
 import { AdjustmentsTab } from './adjustments/AdjustmentsTab';
-// Add export for direct access to the clearElementCache function
-export { AdjustmentsTab, clearElementCache } from './adjustments/utils/domUtils';
+// Export only the clearElementCache function from domUtils
+export { clearElementCache } from './adjustments/utils/domUtils';
+
+// Re-export AdjustmentsTab for backward compatibility
+export { AdjustmentsTab };
