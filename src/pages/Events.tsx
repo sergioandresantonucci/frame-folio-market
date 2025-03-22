@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/ui/Layout';
 import { Button } from '@/components/ui/button';
-import { Plus, Calendar, Image as ImageIcon } from 'lucide-react';
+import { Plus, Calendar, Image as ImageIcon, MapPin } from 'lucide-react';
 import { 
   Table, 
   TableHeader, 
@@ -16,8 +16,16 @@ import { format } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { usePhotoContext, Photo } from '@/context/PhotoContext';
+import { usePhotoContext } from '@/context/PhotoContext';
 import { useNavigate } from 'react-router-dom';
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 // Event type definition
 export interface Event {
@@ -31,6 +39,8 @@ export interface Event {
 
 const Events = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [isEventDetailsOpen, setIsEventDetailsOpen] = useState(false);
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { state: photoState } = usePhotoContext();
@@ -115,6 +125,16 @@ const Events = () => {
     return event.photoIds.length;
   };
 
+  const openEventDetails = (event: Event) => {
+    setSelectedEvent(event);
+    setIsEventDetailsOpen(true);
+  };
+
+  const openGoogleMaps = (location: string) => {
+    const encodedLocation = encodeURIComponent(location);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodedLocation}`, '_blank');
+  };
+
   return (
     <Layout>
       <div className="container mx-auto py-6 px-4 md:px-6">
@@ -137,7 +157,11 @@ const Events = () => {
               </div>
             ) : (
               events.map(event => (
-                <Card key={event.id} className="overflow-hidden">
+                <Card 
+                  key={event.id} 
+                  className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => openEventDetails(event)}
+                >
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 font-medium text-lg mb-2">
                       <Calendar className="h-4 w-4 text-magenta" />
@@ -148,7 +172,16 @@ const Events = () => {
                       <div>{format(event.date, 'dd MMM yyyy')}</div>
                       
                       <div className="font-medium">Location:</div>
-                      <div>{event.location}</div>
+                      <div className="flex items-center">
+                        <span>{event.location}</span>
+                        <MapPin 
+                          className="h-3 w-3 ml-1 text-magenta cursor-pointer" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openGoogleMaps(event.location);
+                          }}
+                        />
+                      </div>
                       
                       <div className="font-medium">Description:</div>
                       <div>{event.description}</div>
@@ -157,7 +190,10 @@ const Events = () => {
                       <div className="flex items-center">
                         <Badge 
                           className="bg-blue-500 hover:bg-blue-600 cursor-pointer"
-                          onClick={() => viewEventPhotos(event.title)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            viewEventPhotos(event.title);
+                          }}
                         >
                           <ImageIcon className="h-3 w-3 mr-1" />
                           {getPhotoCountForEvent(event)}
@@ -190,7 +226,11 @@ const Events = () => {
                   </TableRow>
                 ) : (
                   events.map(event => (
-                    <TableRow key={event.id}>
+                    <TableRow 
+                      key={event.id} 
+                      className="cursor-pointer hover:bg-gray-50"
+                      onClick={() => openEventDetails(event)}
+                    >
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-magenta" />
@@ -198,12 +238,26 @@ const Events = () => {
                         </div>
                       </TableCell>
                       <TableCell>{format(event.date, 'dd MMM yyyy')}</TableCell>
-                      <TableCell>{event.location}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <span>{event.location}</span>
+                          <MapPin 
+                            className="h-4 w-4 ml-1 text-magenta cursor-pointer" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openGoogleMaps(event.location);
+                            }}
+                          />
+                        </div>
+                      </TableCell>
                       <TableCell>{event.description}</TableCell>
                       <TableCell>
                         <Badge 
                           className="bg-blue-500 hover:bg-blue-600 cursor-pointer"
-                          onClick={() => viewEventPhotos(event.title)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            viewEventPhotos(event.title);
+                          }}
                         >
                           <ImageIcon className="h-3 w-3 mr-1" />
                           {getPhotoCountForEvent(event)}
@@ -217,6 +271,63 @@ const Events = () => {
           </div>
         )}
       </div>
+
+      {/* Event Detail Modal */}
+      {selectedEvent && (
+        <Dialog open={isEventDetailsOpen} onOpenChange={setIsEventDetailsOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-magenta" />
+                {selectedEvent.title}
+              </DialogTitle>
+              <DialogDescription>
+                {format(selectedEvent.date, 'PPPP')}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-4 py-4">
+              <div>
+                <h3 className="text-sm font-medium mb-1">Location</h3>
+                <div 
+                  className="flex items-center cursor-pointer text-blue-600 hover:underline"
+                  onClick={() => openGoogleMaps(selectedEvent.location)}
+                >
+                  <MapPin className="h-4 w-4 mr-1" />
+                  {selectedEvent.location}
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium mb-1">Description</h3>
+                <p className="text-sm">{selectedEvent.description}</p>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium mb-2">Photos</h3>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    viewEventPhotos(selectedEvent.title);
+                    setIsEventDetailsOpen(false);
+                  }}
+                >
+                  <ImageIcon className="h-4 w-4 mr-2" />
+                  View {getPhotoCountForEvent(selectedEvent)} Photos
+                </Button>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEventDetailsOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <EventModal 
         isOpen={isModalOpen}

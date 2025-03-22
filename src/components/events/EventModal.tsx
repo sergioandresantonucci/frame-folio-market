@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,6 +34,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Event } from '@/pages/Events';
 import { Textarea } from '@/components/ui/textarea';
 
+// Define our form schema with location validation
 const formSchema = z.object({
   title: z.string().min(2, { message: 'Title must be at least 2 characters' }),
   date: z.date({ required_error: 'Please select a date' }),
@@ -51,6 +52,9 @@ interface EventModalProps {
 
 export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave }) => {
   const isMobile = useIsMobile();
+  const locationInputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -60,6 +64,30 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave 
       description: '',
     },
   });
+
+  // Initialize Google Places Autocomplete
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.google && locationInputRef.current && !autocompleteRef.current) {
+      autocompleteRef.current = new window.google.maps.places.Autocomplete(locationInputRef.current, {
+        types: ['address'],
+      });
+
+      // Listen for place selection
+      autocompleteRef.current.addListener('place_changed', () => {
+        const place = autocompleteRef.current?.getPlace();
+        if (place?.formatted_address) {
+          form.setValue('location', place.formatted_address, { shouldValidate: true });
+        }
+      });
+    }
+
+    return () => {
+      // Clean up listener when component unmounts
+      if (autocompleteRef.current) {
+        google.maps.event.clearInstanceListeners(autocompleteRef.current);
+      }
+    };
+  }, [form, isOpen]);
 
   const onSubmit = (data: FormValues) => {
     onSave({
@@ -143,7 +171,11 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave 
                 <FormItem>
                   <FormLabel>Location</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter event location" {...field} />
+                    <Input 
+                      placeholder="Enter event location" 
+                      {...field} 
+                      ref={locationInputRef}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
