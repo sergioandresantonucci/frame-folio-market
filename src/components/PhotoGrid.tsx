@@ -1,10 +1,11 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { usePhotoContext, Photo } from '@/context/PhotoContext';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Image, 
@@ -15,7 +16,8 @@ import {
   Trash,
   Eye,
   ScanFace,
-  ShoppingCart
+  ShoppingCart,
+  Edit
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -23,9 +25,10 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 interface PhotoGridProps {
   className?: string;
+  searchQuery?: string;
 }
 
-export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
+export const PhotoGrid: React.FC<PhotoGridProps> = ({ className, searchQuery = '' }) => {
   const { 
     state, 
     selectPhoto, 
@@ -34,15 +37,16 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
     selectRange,
     setPrice,
     setActivePhoto,
-    addToCart
+    addToCart,
+    setPhotoName
   } = usePhotoContext();
   const [shiftKeyActive, setShiftKeyActive] = useState(false);
   const [ctrlKeyActive, setCtrlKeyActive] = useState(false);
   const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
+  const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
-  // Filter photos based on active filters
   const filteredPhotos = state.photos.filter(photo => {
     const { filters } = state;
     
@@ -62,6 +66,21 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
       return false;
     }
     
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const photoName = (photo.name || '').toLowerCase();
+      const photoDescription = (photo.metadata?.description || '').toLowerCase();
+      const photoEventDate = (photo.eventDate || '').toLowerCase();
+      const photoPhotographer = (photo.photographer || '').toLowerCase();
+      
+      return (
+        photoName.includes(query) ||
+        photoDescription.includes(query) ||
+        photoEventDate.includes(query) ||
+        photoPhotographer.includes(query)
+      );
+    }
+    
     return true;
   });
 
@@ -74,13 +93,11 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
         setCtrlKeyActive(true);
       }
       
-      // Select all photos with Ctrl+A
       if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
         e.preventDefault();
         filteredPhotos.forEach(photo => selectPhoto(photo.id));
       }
       
-      // Deselect all with Escape
       if (e.key === 'Escape') {
         clearSelection();
       }
@@ -105,6 +122,8 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
   }, [filteredPhotos, clearSelection, selectPhoto]);
 
   const handlePhotoClick = (photo: Photo, index: number) => {
+    if (editingPhotoId) return;
+
     if (shiftKeyActive && lastClickedIndex !== null) {
       selectRange(lastClickedIndex, index);
     } else if (ctrlKeyActive) {
@@ -114,29 +133,23 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
         selectPhoto(photo.id);
       }
     } else {
-      // Modified to toggle selection without clearing previous selections
       if (state.selectedIds.includes(photo.id)) {
-        // If already selected, deselect it
         deselectPhoto(photo.id);
       } else {
-        // If not selected, select it without clearing others
         selectPhoto(photo.id);
       }
       
-      // Double-click behavior: check if it's a quick second click
       const now = Date.now();
       if (lastClickedPhoto.id === photo.id && now - lastClickedPhoto.time < 300) {
         setActivePhoto(photo.id);
       }
       
-      // Update last clicked photo info
       setLastClickedPhoto({ id: photo.id, time: now });
     }
     
     setLastClickedIndex(index);
   };
-  
-  // Track the last clicked photo and timestamp to detect double-clicks
+
   const [lastClickedPhoto, setLastClickedPhoto] = useState<{id: string, time: number}>({id: '', time: 0});
 
   const handlePriceChange = (id: string, price: string) => {
@@ -152,10 +165,8 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
       return;
     }
     
-    // In a real implementation, this would trigger a payment flow first
     toast.info(`Preparing ${state.selectedIds.length} photos for export`);
     
-    // Simulate export delay
     setTimeout(() => {
       toast.success(`${state.selectedIds.length} photos exported successfully`);
     }, 1500);
@@ -189,13 +200,32 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
     toast.success(`Added ${state.selectedIds.length} photos to cart`);
   };
 
+  const handleNameEdit = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingPhotoId(id);
+  };
+
+  const handleNameChange = (id: string, name: string) => {
+    setPhotoName(id, name);
+  };
+
+  const handleNameBlur = () => {
+    setEditingPhotoId(null);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      setEditingPhotoId(null);
+    }
+  };
+
   if (filteredPhotos.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] text-center">
         <Image className="h-16 w-16 text-gray-300 mb-4" />
         <h3 className="text-xl font-medium text-gray-900 mb-2">No photos found</h3>
         <p className="text-gray-500 max-w-md mb-6">
-          No photos match your current filters or no photos have been uploaded yet.
+          No photos match your current filters or search query, or no photos have been uploaded yet.
         </p>
         <Button asChild className="bg-magenta hover:bg-magenta/90">
           <a href="/upload">Upload Photos</a>
@@ -276,7 +306,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
               {photo.src ? (
                 <img
                   src={photo.src}
-                  alt={`Photo ${index + 1}`}
+                  alt={photo.name || `Photo ${index + 1}`}
                   className={cn(
                     "w-full h-full object-cover transition-transform duration-300",
                     "group-hover:scale-[1.03]"
@@ -354,30 +384,61 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className }) => {
               </div>
             </div>
             
-            <div className="p-3 flex items-center justify-between">
-              <Checkbox
-                checked={state.selectedIds.includes(photo.id)}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    selectPhoto(photo.id);
-                  } else {
-                    deselectPhoto(photo.id);
-                  }
-                }}
-                className="data-[state=checked]:bg-magenta data-[state=checked]:border-magenta"
-              />
-              
-              <div className="flex items-center">
-                <Euro className="h-4 w-4 text-gray-400 mr-1" />
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  className="w-16 h-7 text-right pr-1"
-                  value={photo.price.toString()}
-                  onChange={(e) => handlePriceChange(photo.id, e.target.value)}
+            <div className="p-3">
+              <div className="flex items-center justify-between mb-2">
+                <Checkbox
+                  checked={state.selectedIds.includes(photo.id)}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      selectPhoto(photo.id);
+                    } else {
+                      deselectPhoto(photo.id);
+                    }
+                  }}
+                  className="data-[state=checked]:bg-magenta data-[state=checked]:border-magenta"
                   onClick={(e) => e.stopPropagation()}
                 />
+                
+                <div className="flex items-center">
+                  <Euro className="h-4 w-4 text-gray-400 mr-1" />
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    className="w-16 h-7 text-right pr-1"
+                    value={photo.price.toString()}
+                    onChange={(e) => handlePriceChange(photo.id, e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex items-center">
+                {editingPhotoId === photo.id ? (
+                  <Input
+                    value={photo.name || ''}
+                    onChange={(e) => handleNameChange(photo.id, e.target.value)}
+                    onBlur={handleNameBlur}
+                    onKeyDown={handleKeyDown}
+                    autoFocus
+                    className="text-sm flex-grow"
+                    placeholder="Enter photo name..."
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <div 
+                    className="flex items-center group/name cursor-pointer w-full overflow-hidden"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleNameEdit(photo.id, e);
+                    }}
+                  >
+                    <p className="text-sm text-gray-700 truncate flex-grow" title={photo.name}>
+                      {photo.name || `Photo ${index + 1}`}
+                    </p>
+                    <Edit className="h-3 w-3 text-gray-400 invisible group-hover/name:visible ml-1" />
+                  </div>
+                )}
               </div>
             </div>
             

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
@@ -15,6 +14,7 @@ export type Photo = {
   eventDate?: string;
   faces?: { id: string; bbox: [number, number, number, number] }[];
   metadata?: Record<string, any>;
+  name?: string;
 };
 
 type PhotoState = {
@@ -55,7 +55,8 @@ type PhotoAction =
   | { type: 'TOGGLE_CART' }
   | { type: 'ADD_TO_CART'; payload: string }
   | { type: 'REMOVE_FROM_CART'; payload: string }
-  | { type: 'CLEAR_CART' };
+  | { type: 'CLEAR_CART' }
+  | { type: 'SET_PHOTO_NAME'; payload: { id: string; name: string } };
 
 type PhotoContextType = {
   state: PhotoState;
@@ -77,6 +78,7 @@ type PhotoContextType = {
   removeFromCart: (id: string) => void;
   clearCart: () => void;
   getCartTotal: () => number;
+  setPhotoName: (id: string, name: string) => void;
 };
 
 const initialState: PhotoState = {
@@ -211,6 +213,13 @@ const photoReducer = (state: PhotoState, action: PhotoAction): PhotoState => {
         ...state,
         cartItems: [],
       };
+    case 'SET_PHOTO_NAME':
+      return {
+        ...state,
+        photos: state.photos.map(photo =>
+          photo.id === action.payload.id ? { ...photo, name: action.payload.name } : photo
+        ),
+      };
     default:
       return state;
   }
@@ -271,8 +280,9 @@ export const PhotoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     toast.info('Foto rimossa dal carrello');
   };
   const clearCart = () => dispatch({ type: 'CLEAR_CART' });
+  const setPhotoName = (id: string, name: string) => 
+    dispatch({ type: 'SET_PHOTO_NAME', payload: { id, name } });
 
-  // Calcola il totale del carrello
   const getCartTotal = () => {
     return state.cartItems.reduce((total, id) => {
       const photo = state.photos.find(p => p.id === id);
@@ -301,7 +311,8 @@ export const PhotoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addToCart,
         removeFromCart,
         clearCart,
-        getCartTotal
+        getCartTotal,
+        setPhotoName
       }}
     >
       {children}

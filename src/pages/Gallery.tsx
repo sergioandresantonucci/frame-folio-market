@@ -1,11 +1,13 @@
-import React, { useEffect } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PhotoProvider, usePhotoContext, Photo } from '@/context/PhotoContext';
 import { Layout } from '@/components/ui/Layout';
 import { PhotoGrid } from '@/components/PhotoGrid';
 import { PhotoViewer } from '@/components/PhotoViewer';
 import { Button } from '@/components/ui/button';
-import { Upload, RefreshCw, BarChart3, CreditCard } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Upload, RefreshCw, BarChart3, CreditCard, Search } from 'lucide-react';
 import { detectFaces } from '@/utils/faceDetection';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -154,7 +156,8 @@ const generateSamplePhotos = (count: number): Photo[] => {
       eventDate: eventType,
       metadata: {
         description: image.desc
-      }
+      },
+      name: `Photo ${i + 1} - ${image.desc}` // Add default name for each photo
     };
   });
 };
@@ -163,6 +166,7 @@ const GalleryContent: React.FC = () => {
   const { state, addPhotos, addFaceData } = usePhotoContext();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (state.photos.length === 0) {
@@ -215,7 +219,7 @@ const GalleryContent: React.FC = () => {
           </Button>
         </div>
         <div className="flex-grow p-4 md:p-8 overflow-auto">
-          <PhotoGrid className="max-w-7xl mx-auto" />
+          <PhotoGrid className="max-w-7xl mx-auto" searchQuery={searchQuery} />
         </div>
         <FloatingCart />
         <CartModal />
@@ -230,9 +234,19 @@ const GalleryContent: React.FC = () => {
           <h1 className="text-2xl font-semibold">Photo Gallery</h1>
           
           <div className={cn(
-            "flex",
+            "flex items-center",
             isMobile ? "w-full mt-2 gap-2" : "gap-3"
           )}>
+            <div className="relative flex-grow mr-2">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input 
+                placeholder="Search photos..." 
+                className="pl-9"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            
             <Button asChild className="bg-magenta hover:bg-magenta/90 flex-1 md:flex-none">
               <a href="/upload">
                 <Upload className="h-4 w-4 md:mr-2" />
@@ -260,7 +274,7 @@ const GalleryContent: React.FC = () => {
           </div>
         </div>
         
-        <PhotoGrid />
+        <PhotoGrid searchQuery={searchQuery} />
         <PhotoViewer />
         <CartModal />
         <FloatingCart />
