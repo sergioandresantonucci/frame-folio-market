@@ -32,14 +32,24 @@ export const usePhotoAdjustments = () => {
     
     // Find the active photo element and apply CSS filters
     const photoId = state.activePhoto.id;
+    
+    // Use document.querySelector to find the image element
     const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
     
-    if (photoElement) {
+    // If we can't find the element in the grid, try to find it in the viewer
+    const viewerPhotoElement = document.querySelector(`.photo-viewer-image`) as HTMLImageElement;
+    
+    // Use either the grid element or the viewer element
+    const targetElement = photoElement || viewerPhotoElement;
+    
+    if (targetElement) {
+      console.log("Found photo element, applying filters:", targetElement);
+      
       // Save current filter in history before applying new one
-      if (photoElement.style.filter) {
+      if (targetElement.style.filter) {
         setHistory(prev => ({
           ...prev,
-          [photoId]: photoElement.style.filter
+          [photoId]: targetElement.style.filter
         }));
       }
       
@@ -55,15 +65,22 @@ export const usePhotoAdjustments = () => {
         ${highlights < 0 ? `drop-shadow(0 0 ${Math.abs(highlights)/50}px rgba(255,255,255,0.5))` : ''}
       `;
       
-      photoElement.style.filter = filterString.trim();
+      console.log("Applying filter:", filterString);
+      targetElement.style.filter = filterString.trim();
       
       // Store the filter in sessionStorage to persist through renders
       sessionStorage.setItem(`filter-${photoId}`, filterString);
+      
+      // Apply the same filter to both the grid and viewer images if both exist
+      if (photoElement && viewerPhotoElement && photoElement !== viewerPhotoElement) {
+        viewerPhotoElement.style.filter = filterString.trim();
+      }
       
       toast.success("Regolazioni colore applicate", {
         description: `Luminosità: ${brightness}, Contrasto: ${contrast}, Saturazione: ${saturation}, Temperatura: ${temperature}`
       });
     } else {
+      console.error("Cannot find photo element with ID:", photoId);
       toast.error("Impossibile trovare l'elemento foto selezionato");
     }
   };
@@ -75,9 +92,16 @@ export const usePhotoAdjustments = () => {
       const savedFilter = sessionStorage.getItem(`filter-${photoId}`);
       
       if (savedFilter) {
+        // Apply to grid image
         const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
         if (photoElement) {
           photoElement.style.filter = savedFilter;
+        }
+        
+        // Apply to viewer image if it exists
+        const viewerPhotoElement = document.querySelector(`.photo-viewer-image`) as HTMLImageElement;
+        if (viewerPhotoElement) {
+          viewerPhotoElement.style.filter = savedFilter;
         }
         
         // Try to extract values from saved filter
@@ -130,18 +154,26 @@ export const usePhotoAdjustments = () => {
     const previousFilter = history[photoId];
     
     if (previousFilter) {
+      // Apply to grid image
       const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
       if (photoElement) {
         photoElement.style.filter = previousFilter;
-        sessionStorage.setItem(`filter-${photoId}`, previousFilter);
-        
-        // Remove this entry from history
-        const newHistory = {...history};
-        delete newHistory[photoId];
-        setHistory(newHistory);
-        
-        toast.info("Regolazione precedente ripristinata");
       }
+      
+      // Apply to viewer image
+      const viewerPhotoElement = document.querySelector(`.photo-viewer-image`) as HTMLImageElement;
+      if (viewerPhotoElement) {
+        viewerPhotoElement.style.filter = previousFilter;
+      }
+      
+      sessionStorage.setItem(`filter-${photoId}`, previousFilter);
+      
+      // Remove this entry from history
+      const newHistory = {...history};
+      delete newHistory[photoId];
+      setHistory(newHistory);
+      
+      toast.info("Regolazione precedente ripristinata");
     } else {
       toast.info("Nessuna regolazione precedente da annullare");
     }
@@ -253,13 +285,21 @@ export const usePhotoAdjustments = () => {
     // If there's an active photo, reset its filters
     if (state.activePhoto) {
       const photoId = state.activePhoto.id;
-      const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
       
+      // Reset grid image
+      const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
       if (photoElement) {
         photoElement.style.filter = 'none';
-        sessionStorage.removeItem(`filter-${photoId}`);
-        toast.info("Regolazioni resettate");
       }
+      
+      // Reset viewer image
+      const viewerPhotoElement = document.querySelector(`.photo-viewer-image`) as HTMLImageElement;
+      if (viewerPhotoElement) {
+        viewerPhotoElement.style.filter = 'none';
+      }
+      
+      sessionStorage.removeItem(`filter-${photoId}`);
+      toast.info("Regolazioni resettate");
     }
   };
 

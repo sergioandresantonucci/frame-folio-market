@@ -26,7 +26,7 @@ export const PresetButtons: React.FC<PresetButtonsProps> = ({
   };
 
   return (
-    <div className="flex flex-col space-y-2">
+    <div className="flex flex-col space-y-2 w-full">
       <Button 
         size="sm" 
         variant="outline" 

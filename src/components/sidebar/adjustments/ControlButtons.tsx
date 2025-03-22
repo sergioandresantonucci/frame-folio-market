@@ -21,7 +21,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
   hasActivePhoto
 }) => {
   return (
-    <div className="flex flex-col space-y-2 mt-4">
+    <div className="flex flex-col space-y-2 mt-4 w-full">
       <Button 
         size="sm" 
         variant="outline" 
