@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Sidebar } from '../Sidebar';
+import { Sidebar } from '../sidebar/Sidebar';
 import { Header } from '../Header';
 import { cn } from '@/lib/utils';
 
