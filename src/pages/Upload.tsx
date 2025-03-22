@@ -178,6 +178,7 @@ const UploadContent: React.FC = () => {
           const fileName = `${uuidv4()}.${fileExt}`;
           const filePath = `${user.id}/${fileName}`;
           
+          // Update progress function
           const onProgress = (progress: { loaded: number; total: number }) => {
             setFiles(prev => 
               prev.map(f => f.id === fileItem.id 
@@ -187,96 +188,104 @@ const UploadContent: React.FC = () => {
             );
           };
           
-          const options = {
-            cacheControl: '3600',
-            upsert: false
-          };
-          
-          const xhr = new XMLHttpRequest();
-          const formData = new FormData();
-          formData.append('file', fileItem.file);
-          
-          xhr.upload.addEventListener('progress', onProgress);
-          
-          xhr.open('POST', `${supabase.storageUrl}/object/photos/${filePath}`);
-          xhr.setRequestHeader('Authorization', `Bearer ${supabase.supabaseKey}`);
-          
-          xhr.onload = async () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              const { error: uploadError, data } = await supabase.storage
-                .from('photos')
-                .upload(filePath, fileItem.file, options);
-                
-              if (uploadError) {
-                setFiles(prev => 
-                  prev.map(f => f.id === fileItem.id ? { ...f, status: 'error' } : f)
-                );
-                reject(uploadError);
-                return;
-              }
+          // Use XMLHttpRequest for progress tracking
+          const uploadWithProgress = async () => {
+            return new Promise<void>((resolveUpload, rejectUpload) => {
+              const xhr = new XMLHttpRequest();
               
-              const { data: { publicUrl } } = supabase.storage
-                .from('photos')
-                .getPublicUrl(filePath);
+              xhr.upload.addEventListener('progress', onProgress);
               
-              const { error: dbError, data: photoData } = await supabase
-                .from('photos')
-                .insert({
-                  user_id: user.id,
-                  storage_path: filePath,
-                  thumbnail_path: filePath,
-                  title: fileItem.file.name,
-                  photographer,
-                  event_date: eventName || eventDate,
-                  price: 10,
-                  watermarked: true,
-                })
-                .select()
-                .single();
-                
-              if (dbError) {
-                setFiles(prev => 
-                  prev.map(f => f.id === fileItem.id ? { ...f, status: 'error' } : f)
-                );
-                reject(dbError);
-                return;
-              }
-              
-              setFiles(prev => 
-                prev.map(f => f.id === fileItem.id ? { ...f, progress: 100, status: 'success' } : f)
-              );
-              
-              const photo: Photo = {
-                id: photoData.id,
-                src: publicUrl,
-                thumbnail: publicUrl,
-                price: photoData.price || 10,
-                watermarked: photoData.watermarked || true,
-                selected: false,
-                photographer: photoData.photographer,
-                date: new Date().toISOString().split('T')[0],
-                eventDate: photoData.event_date,
-                name: fileItem.file.name
+              xhr.onreadystatechange = async function() {
+                if (xhr.readyState === 4) {
+                  if (xhr.status >= 200 && xhr.status < 300) {
+                    const options = {
+                      cacheControl: '3600',
+                      upsert: false
+                    };
+                    
+                    // Now use the regular Supabase upload API (without direct access to protected properties)
+                    const { error: uploadError, data } = await supabase.storage
+                      .from('photos')
+                      .upload(filePath, fileItem.file, options);
+                      
+                    if (uploadError) {
+                      rejectUpload(uploadError);
+                    } else {
+                      resolveUpload();
+                    }
+                  } else {
+                    rejectUpload(new Error(`Upload failed with status: ${xhr.status}`));
+                  }
+                }
               };
               
-              resolve(photo);
-            } else {
-              setFiles(prev => 
-                prev.map(f => f.id === fileItem.id ? { ...f, status: 'error' } : f)
-              );
-              reject(new Error(`Upload failed with status ${xhr.status}`));
-            }
+              // Get the upload URL with a signed URL from Supabase
+              supabase.storage.from('photos').createSignedUploadUrl(filePath)
+                .then(({ data, error }) => {
+                  if (error) {
+                    rejectUpload(error);
+                    return;
+                  }
+                  
+                  const { signedUrl, token } = data;
+                  
+                  xhr.open('PUT', signedUrl);
+                  xhr.setRequestHeader('Content-Type', fileItem.file.type);
+                  xhr.send(fileItem.file);
+                })
+                .catch(rejectUpload);
+            });
           };
           
-          xhr.onerror = () => {
+          await uploadWithProgress();
+          
+          // Get the public URL for the uploaded file
+          const { data: { publicUrl } } = supabase.storage
+            .from('photos')
+            .getPublicUrl(filePath);
+          
+          // Save photo information to the database
+          const { error: dbError, data: photoData } = await supabase
+            .from('photos')
+            .insert({
+              user_id: user.id,
+              storage_path: filePath,
+              thumbnail_path: filePath,
+              title: fileItem.file.name,
+              photographer,
+              event_date: eventName || eventDate,
+              price: 10,
+              watermarked: true,
+            })
+            .select()
+            .single();
+            
+          if (dbError) {
             setFiles(prev => 
               prev.map(f => f.id === fileItem.id ? { ...f, status: 'error' } : f)
             );
-            reject(new Error('Upload failed'));
+            reject(dbError);
+            return;
+          }
+          
+          setFiles(prev => 
+            prev.map(f => f.id === fileItem.id ? { ...f, progress: 100, status: 'success' } : f)
+          );
+          
+          const photo: Photo = {
+            id: photoData.id,
+            src: publicUrl,
+            thumbnail: publicUrl,
+            price: photoData.price || 10,
+            watermarked: photoData.watermarked || true,
+            selected: false,
+            photographer: photoData.photographer,
+            date: new Date().toISOString().split('T')[0],
+            eventDate: photoData.event_date,
+            name: fileItem.file.name
           };
           
-          xhr.send(formData);
-          
+          resolve(photo);
         } catch (error) {
           console.error("Upload error:", error);
           setFiles(prev => 
