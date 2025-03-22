@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { buildFilterString, extractValuesFromFilter } from './sidebar/adjustments/utils/filterUtils';
+import { applyFilterToElements, saveFilterToStorage } from './sidebar/adjustments/utils/domUtils';
 
 export const ColorCorrectionBar: React.FC = () => {
   const { state } = usePhotoContext();
@@ -101,11 +103,32 @@ export const ColorCorrectionBar: React.FC = () => {
       return;
     }
     
-    toast.success(`Applied adjustments to ${state.selectedIds.length} photo(s)`, {
-      description: `Brightness: ${brightness}, Contrast: ${contrast}, Saturation: ${saturation}`
+    // Create the filter string
+    const filterString = buildFilterString(
+      brightness,
+      contrast, 
+      saturation,
+      clarity,
+      temperature,
+      highlights
+    );
+    
+    // Apply the filter to all selected photos
+    let successCount = 0;
+    state.selectedIds.forEach(photoId => {
+      if (applyFilterToElements(photoId, filterString)) {
+        saveFilterToStorage(photoId, filterString);
+        successCount++;
+      }
     });
     
-    // In a real app, this would apply the filters to the selected photos
+    if (successCount > 0) {
+      toast.success(`Applied adjustments to ${successCount} photo(s)`, {
+        description: `Brightness: ${brightness}, Contrast: ${contrast}, Saturation: ${saturation}`
+      });
+    } else {
+      toast.error("Failed to apply adjustments to selected photos");
+    }
   };
   
   // Close the color correction bar
