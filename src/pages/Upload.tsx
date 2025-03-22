@@ -203,7 +203,7 @@ const UploadContent: React.FC = () => {
                       upsert: false
                     };
                     
-                    // Now use the regular Supabase upload API (without direct access to protected properties)
+                    // Now use the regular Supabase upload API
                     const { error: uploadError, data } = await supabase.storage
                       .from('photos')
                       .upload(filePath, fileItem.file, options);
