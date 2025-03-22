@@ -67,7 +67,7 @@ const AnalyticsContent: React.FC = () => {
   const averageOrderValue = totalRevenue / salesData.length;
   
   return (
-    <Layout>
+    <Layout showSidebar={false}>
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <h1 className="text-2xl font-semibold">Analytics Dashboard</h1>

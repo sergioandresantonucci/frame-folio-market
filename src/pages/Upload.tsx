@@ -1,450 +1,315 @@
-
-import React, { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { usePhotoContext, Photo } from '@/context/PhotoContext';
+import React from 'react';
+import { PhotoProvider, usePhotoContext } from '@/context/PhotoContext';
 import { Layout } from '@/components/ui/Layout';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
-import { Upload as UploadIcon, ImagePlus, X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
-import { v4 as uuidv4 } from 'uuid';
+import { Upload as UploadIcon, Image, FolderUp, X, Check, AlertCircle } from 'lucide-react';
+import { useDropzone } from 'react-dropzone';
+import { useState, useCallback } from 'react';
+import { useToast } from '@/components/ui/use-toast';
+import { useNavigate } from 'react-router-dom';
 
-const generateId = () => `photo-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-
-interface UploadPreviewProps {
-  file: File;
-  onRemove: () => void;
-  uploadProgress: number;
-  status: 'pending' | 'uploading' | 'success' | 'error';
-}
-
-const UploadPreview: React.FC<UploadPreviewProps> = ({ file, onRemove, uploadProgress, status }) => {
-  const [preview, setPreview] = useState<string | null>(null);
-  
-  React.useEffect(() => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-    
-    return () => {
-      reader.abort();
-    };
-  }, [file]);
-  
-  return (
-    <Card className="overflow-hidden relative group">
-      <div className="aspect-square bg-gray-100 relative">
-        {preview ? (
-          <img 
-            src={preview} 
-            alt={file.name} 
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <ImagePlus className="h-12 w-12 text-gray-300" />
-          </div>
-        )}
-        
-        <Button 
-          variant="destructive" 
-          size="icon" 
-          className="absolute top-2 right-2 w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={onRemove}
-        >
-          <X className="h-3 w-3" />
-        </Button>
-        
-        {status === 'uploading' && (
-          <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white p-4">
-            <Loader2 className="h-8 w-8 animate-spin mb-2" />
-            <span className="text-sm font-medium">Uploading...</span>
-            <Progress value={uploadProgress} className="w-full mt-2" />
-          </div>
-        )}
-        
-        {status === 'success' && (
-          <div className="absolute top-2 left-2">
-            <Badge className="bg-green-500 border-0">
-              <CheckCircle className="h-3 w-3 mr-1" />
-              Uploaded
-            </Badge>
-          </div>
-        )}
-        
-        {status === 'error' && (
-          <div className="absolute top-2 left-2">
-            <Badge className="bg-red-500 border-0">
-              <AlertCircle className="h-3 w-3 mr-1" />
-              Failed
-            </Badge>
-          </div>
-        )}
-      </div>
-      
-      <CardContent className="p-3">
-        <div className="text-xs font-medium truncate" title={file.name}>
-          {file.name}
-        </div>
-        <div className="text-xs text-gray-500">
-          {(file.size / (1024 * 1024)).toFixed(2)} MB
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-type UploadFile = {
-  file: File;
-  id: string;
-  progress: number;
-  status: 'pending' | 'uploading' | 'success' | 'error';
-};
+type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
+type FileWithPreview = File & { preview: string; id: string; progress: number; status: UploadStatus; error?: string };
 
 const UploadContent: React.FC = () => {
-  const [files, setFiles] = useState<UploadFile[]>([]);
-  const [photographer, setPhotographer] = useState<string>('');
-  const [eventDate, setEventDate] = useState<string>('');
-  const [isUploading, setIsUploading] = useState(false);
-  const [eventName, setEventName] = useState<string>('');
-  const { addPhotos } = usePhotoContext();
+  const [files, setFiles] = useState<FileWithPreview[]>([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [overallStatus, setOverallStatus] = useState<UploadStatus>('idle');
+  const { toast } = useToast();
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
-  
-  const handleFilesSelected = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.length) return;
-    
-    const newFiles = Array.from(e.target.files).map(file => ({
-      file,
-      id: generateId(),
-      progress: 0,
-      status: 'pending' as const
-    }));
-    
-    setFiles(prev => [...prev, ...newFiles]);
-    
-    e.target.value = '';
-  }, []);
-  
-  const handleRemoveFile = useCallback((id: string) => {
-    setFiles(prev => prev.filter(file => file.id !== id));
-  }, []);
-  
-  const handleUpload = useCallback(async () => {
-    if (files.length === 0) {
-      toast.warning("Seleziona delle foto da caricare");
-      return;
-    }
-    
-    if (!photographer) {
-      toast.warning("Inserisci il nome del fotografo");
-      return;
-    }
-    
-    if (!eventDate) {
-      toast.warning("Inserisci la data dell'evento");
-      return;
-    }
-    
-    setIsUploading(true);
-    
-    setFiles(prev => 
-      prev.map(file => ({
-        ...file,
-        status: 'uploading'
-      }))
+  const { addPhotos } = usePhotoContext();
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const newFiles = acceptedFiles.map(file => 
+      Object.assign(file, {
+        preview: URL.createObjectURL(file),
+        id: Math.random().toString(36).substring(2),
+        progress: 0,
+        status: 'idle' as UploadStatus
+      })
     );
     
-    const uploadPromises = files.map(async (fileItem) => {
-      return new Promise<Photo>(async (resolve, reject) => {
-        try {
-          const fileExt = fileItem.file.name.split('.').pop();
-          const fileName = `${uuidv4()}.${fileExt}`;
-          const filePath = `public/${fileName}`;
-          
-          // Update progress function
-          const onProgress = (progress: { loaded: number; total: number }) => {
-            setFiles(prev => 
-              prev.map(f => f.id === fileItem.id 
-                ? { ...f, progress: (progress.loaded / progress.total) * 100 } 
-                : f
-              )
-            );
-          };
-          
-          // Use XMLHttpRequest for progress tracking
-          const uploadWithProgress = async () => {
-            return new Promise<void>((resolveUpload, rejectUpload) => {
-              const xhr = new XMLHttpRequest();
-              
-              xhr.upload.addEventListener('progress', onProgress);
-              
-              xhr.onreadystatechange = async function() {
-                if (xhr.readyState === 4) {
-                  if (xhr.status >= 200 && xhr.status < 300) {
-                    const options = {
-                      cacheControl: '3600',
-                      upsert: false
-                    };
-                    
-                    // Now use the regular Supabase upload API
-                    const { error: uploadError, data } = await supabase.storage
-                      .from('photos')
-                      .upload(filePath, fileItem.file, options);
-                      
-                    if (uploadError) {
-                      rejectUpload(uploadError);
-                    } else {
-                      resolveUpload();
-                    }
-                  } else {
-                    rejectUpload(new Error(`Upload failed with status: ${xhr.status}`));
-                  }
-                }
-              };
-              
-              // Get the upload URL with a signed URL from Supabase
-              supabase.storage.from('photos').createSignedUploadUrl(filePath)
-                .then(({ data, error }) => {
-                  if (error) {
-                    rejectUpload(error);
-                    return;
-                  }
-                  
-                  const { signedUrl, token } = data;
-                  
-                  xhr.open('PUT', signedUrl);
-                  xhr.setRequestHeader('Content-Type', fileItem.file.type);
-                  xhr.send(fileItem.file);
-                })
-                .catch(rejectUpload);
-            });
-          };
-          
-          await uploadWithProgress();
-          
-          // Get the public URL for the uploaded file
-          const { data: { publicUrl } } = supabase.storage
-            .from('photos')
-            .getPublicUrl(filePath);
-          
-          // Save photo information to the database - now without requiring user_id
-          const { error: dbError, data: photoData } = await supabase
-            .from('photos')
-            .insert({
-              storage_path: filePath,
-              thumbnail_path: filePath,
-              title: fileItem.file.name,
-              photographer,
-              event_date: eventName || eventDate,
-              price: 10,
-              watermarked: true,
-              // user_id is now optional so we can omit it for anonymous uploads
-            })
-            .select()
-            .single();
-            
-          if (dbError) {
-            setFiles(prev => 
-              prev.map(f => f.id === fileItem.id ? { ...f, status: 'error' } : f)
-            );
-            reject(dbError);
-            return;
-          }
-          
-          setFiles(prev => 
-            prev.map(f => f.id === fileItem.id ? { ...f, progress: 100, status: 'success' } : f)
-          );
-          
-          const photo: Photo = {
-            id: photoData.id,
-            src: publicUrl,
-            thumbnail: publicUrl,
-            price: photoData.price || 10,
-            watermarked: photoData.watermarked || true,
-            selected: false,
-            photographer: photoData.photographer,
-            date: new Date().toISOString().split('T')[0],
-            eventDate: photoData.event_date,
-            name: fileItem.file.name
-          };
-          
-          resolve(photo);
-        } catch (error) {
-          console.error("Upload error:", error);
-          setFiles(prev => 
-            prev.map(f => f.id === fileItem.id ? { ...f, status: 'error' } : f)
-          );
-          reject(error);
-        }
-      });
+    setFiles(prev => [...prev, ...newFiles]);
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp']
+    }
+  });
+
+  const removeFile = (id: string) => {
+    setFiles(files => {
+      const fileToRemove = files.find(file => file.id === id);
+      if (fileToRemove?.preview) {
+        URL.revokeObjectURL(fileToRemove.preview);
+      }
+      return files.filter(file => file.id !== id);
+    });
+  };
+
+  const uploadFiles = async () => {
+    if (files.length === 0) return;
+    
+    setOverallStatus('uploading');
+    let completedFiles = 0;
+    
+    // Update all files to uploading status
+    setFiles(prev => prev.map(file => ({...file, status: 'uploading' as UploadStatus})));
+    
+    // Simulate file upload with progress
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      // Simulate upload for each file
+      for (let progress = 0; progress <= 100; progress += 5) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        setFiles(prev => 
+          prev.map(f => 
+            f.id === file.id 
+              ? {...f, progress} 
+              : f
+          )
+        );
+        
+        // Update overall progress
+        const currentTotalProgress = (completedFiles * 100 + progress) / files.length;
+        setUploadProgress(currentTotalProgress);
+      }
+      
+      // Mark file as complete
+      setFiles(prev => 
+        prev.map(f => 
+          f.id === file.id 
+            ? {...f, status: Math.random() > 0.9 ? 'error' : 'success', error: 'Upload failed'} 
+            : f
+        )
+      );
+      
+      completedFiles++;
+    }
+    
+    // Check if any files failed
+    setFiles(prev => {
+      const hasErrors = prev.some(file => file.status === 'error');
+      setOverallStatus(hasErrors ? 'error' : 'success');
+      return prev;
     });
     
-    try {
-      const uploadedPhotos = await Promise.all(uploadPromises);
+    // Add successfully uploaded photos to context
+    const successfulUploads = files
+      .filter(file => file.status === 'success')
+      .map(file => ({
+        id: file.id,
+        src: file.preview,
+        title: file.name,
+        description: '',
+        tags: [],
+        uploadedAt: new Date().toISOString(),
+      }));
+    
+    if (successfulUploads.length > 0) {
+      addPhotos(successfulUploads);
       
-      addPhotos(uploadedPhotos);
+      toast({
+        title: "Upload Complete",
+        description: `Successfully uploaded ${successfulUploads.length} of ${files.length} photos.`,
+      });
       
-      toast.success(`${files.length} foto caricate con successo`);
-      
+      // Navigate to gallery after short delay
       setTimeout(() => {
         navigate('/gallery');
-      }, 1500);
-    } catch (error) {
-      console.error("Failed to upload photos:", error);
-      toast.error("Si è verificato un errore durante il caricamento delle foto");
-    } finally {
-      setIsUploading(false);
+      }, 2000);
     }
-  }, [files, photographer, eventDate, eventName, addPhotos, navigate]);
-  
+  };
+
   return (
-    <Layout>
-      <div className="space-y-6">
+    <Layout showSidebar={false}>
+      <div className="container mx-auto py-6 space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Carica Foto</h1>
-        </div>
-        
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card className="p-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="photographer">Fotografo</Label>
-                <Input 
-                  id="photographer" 
-                  placeholder="Inserisci il nome del fotografo" 
-                  value={photographer}
-                  onChange={(e) => setPhotographer(e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="eventDate">Data Evento</Label>
-                <Input 
-                  id="eventDate" 
-                  type="date" 
-                  value={eventDate}
-                  onChange={(e) => setEventDate(e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="eventName">Nome Evento</Label>
-                <Input 
-                  id="eventName" 
-                  placeholder="Matrimonio, Compleanno, ecc." 
-                  value={eventName}
-                  onChange={(e) => setEventName(e.target.value)}
-                />
-              </div>
-              
-              <div className="pt-4">
-                <Button asChild className="w-full">
-                  <label>
-                    <UploadIcon className="h-4 w-4 mr-2" />
-                    Seleziona Foto
-                    <Input 
-                      type="file" 
-                      accept="image/*" 
-                      multiple 
-                      className="hidden" 
-                      onChange={handleFilesSelected} 
-                    />
-                  </label>
-                </Button>
-              </div>
-            </div>
-          </Card>
+          <h1 className="text-2xl font-semibold">Upload Photos</h1>
           
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">Foto selezionate ({files.length})</h3>
-              
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setFiles([])}
-                  disabled={files.length === 0 || isUploading}
-                >
-                  Cancella tutto
-                </Button>
-                
-                <Button 
-                  size="sm"
-                  className="bg-magenta hover:bg-magenta/90"
-                  onClick={handleUpload}
-                  disabled={files.length === 0 || isUploading}
-                >
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                      Caricamento...
-                    </>
-                  ) : (
-                    <>
-                      Carica {files.length} Foto
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setFiles([])}
+              disabled={files.length === 0 || overallStatus === 'uploading'}
+            >
+              Clear All
+            </Button>
             
-            {files.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-[300px] border-2 border-dashed rounded-md p-6 text-center">
-                <ImagePlus className="h-12 w-12 text-gray-300 mb-4" />
-                <h3 className="text-sm font-medium text-gray-900 mb-1">Nessuna foto selezionata</h3>
-                <p className="text-xs text-gray-500 mb-4">
-                  Clicca su "Seleziona Foto" per scegliere le immagini da caricare
-                </p>
-                <Button asChild variant="outline" size="sm">
-                  <label>
-                    <UploadIcon className="h-4 w-4 mr-2" />
-                    Seleziona Foto
-                    <Input 
-                      type="file" 
-                      accept="image/*" 
-                      multiple 
-                      className="hidden" 
-                      onChange={handleFilesSelected} 
-                    />
-                  </label>
-                </Button>
-              </div>
-            ) : (
-              <div className={cn(
-                "grid gap-4 max-h-[500px] overflow-y-auto pr-2",
-                isMobile ? "grid-cols-2" : "grid-cols-3"
-              )}>
-                {files.map((fileItem) => (
-                  <UploadPreview
-                    key={fileItem.id}
-                    file={fileItem.file}
-                    onRemove={() => handleRemoveFile(fileItem.id)}
-                    uploadProgress={fileItem.progress}
-                    status={fileItem.status}
-                  />
-                ))}
-              </div>
-            )}
+            <Button 
+              onClick={uploadFiles}
+              disabled={files.length === 0 || overallStatus === 'uploading'}
+            >
+              <UploadIcon className="h-4 w-4 mr-2" />
+              {overallStatus === 'uploading' ? 'Uploading...' : 'Upload All'}
+            </Button>
           </div>
         </div>
+        
+        <Tabs defaultValue="upload">
+          <TabsList>
+            <TabsTrigger value="upload">Upload</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="upload" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Upload Photos</CardTitle>
+                <CardDescription>
+                  Drag and drop your photos or click to browse
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div 
+                  {...getRootProps()} 
+                  className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors ${
+                    isDragActive ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary'
+                  }`}
+                >
+                  <input {...getInputProps()} />
+                  <div className="flex flex-col items-center justify-center gap-4">
+                    <FolderUp className="h-12 w-12 text-gray-400" />
+                    {isDragActive ? (
+                      <p>Drop the photos here...</p>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-lg font-medium">Drag photos here or click to select</p>
+                        <p className="text-sm text-gray-500">Supports: JPG, PNG, GIF, WEBP</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {files.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Upload Queue ({files.length} files)</CardTitle>
+                  {overallStatus === 'uploading' && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Overall Progress</span>
+                        <span>{Math.round(uploadProgress)}%</span>
+                      </div>
+                      <Progress value={uploadProgress} />
+                    </div>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {files.map((file) => (
+                      <div key={file.id} className="relative border rounded-lg overflow-hidden group">
+                        <div className="aspect-square relative">
+                          <img
+                            src={file.preview}
+                            alt={file.name}
+                            className="object-cover w-full h-full"
+                            onLoad={() => { URL.revokeObjectURL(file.preview) }}
+                          />
+                          {file.status === 'uploading' && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                              <div className="w-3/4">
+                                <Progress value={file.progress} className="h-2" />
+                                <p className="text-white text-xs mt-2 text-center">{file.progress}%</p>
+                              </div>
+                            </div>
+                          )}
+                          {file.status === 'success' && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                              <div className="bg-green-500 rounded-full p-2">
+                                <Check className="h-6 w-6 text-white" />
+                              </div>
+                            </div>
+                          )}
+                          {file.status === 'error' && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                              <div className="bg-red-500 rounded-full p-2">
+                                <AlertCircle className="h-6 w-6 text-white" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-2 text-sm truncate">{file.name}</div>
+                        <button 
+                          onClick={() => removeFile(file.id)}
+                          className="absolute top-2 right-2 bg-black/70 rounded-full p-1 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                          disabled={overallStatus === 'uploading'}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="settings">
+            <Card>
+              <CardHeader>
+                <CardTitle>Upload Settings</CardTitle>
+                <CardDescription>
+                  Configure how your photos are processed during upload
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="event">Event Name</Label>
+                  <Input id="event" placeholder="Enter event name" />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="resize">Resize Images</Label>
+                  <select 
+                    id="resize" 
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="none">No resizing</option>
+                    <option value="large">Large (2048px)</option>
+                    <option value="medium">Medium (1024px)</option>
+                    <option value="small">Small (800px)</option>
+                  </select>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input type="checkbox" id="watermark" className="h-4 w-4 rounded border-gray-300" />
+                  <Label htmlFor="watermark">Apply watermark</Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input type="checkbox" id="metadata" className="h-4 w-4 rounded border-gray-300" />
+                  <Label htmlFor="metadata">Preserve EXIF metadata</Label>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button>Save Settings</Button>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
 };
 
 const Upload: React.FC = () => {
-  return <UploadContent />;
+  return (
+    <PhotoProvider>
+      <UploadContent />
+    </PhotoProvider>
+  );
 };
 
 export default Upload;
