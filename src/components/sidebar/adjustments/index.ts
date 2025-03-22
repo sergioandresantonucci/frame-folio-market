@@ -1,10 +1,9 @@
 
-export * from './AdjustmentSlider';
-export * from './PresetButtons';
-export * from './ControlButtons';
+export * from './AdjustmentsTab';
 export * from './usePhotoAdjustments';
-export * from './types';
-export * from './hooks/useAdjustmentState';
-export * from './hooks/useAdjustmentOperations';
-export * from './hooks/useAdjustmentPresets';
-export * from './hooks/useEffectApplication';
+export * from './useAdjustmentHistory';
+export * from './components/AdjustmentControl';
+export * from './components/BasicAdjustments';
+export * from './components/AdvancedAdjustments';
+export * from './components/ControlsSection';
+export * from './components/PresetSection';
