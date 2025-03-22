@@ -9,12 +9,11 @@ import { usePhotoContext } from '@/context/PhotoContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { TabButtonsGroup } from './TabButtonsGroup';
 import { FiltersTab } from './FiltersTab';
-import { AdjustmentsTab } from './AdjustmentsTab';
 import { PricingTab } from './PricingTab';
 import { WatermarkTab } from './WatermarkTab';
 import { FaceDetectionTab } from './FaceDetectionTab';
 
-export type SidebarTabType = 'filters' | 'adjustments' | 'pricing' | 'watermark' | 'face';
+export type SidebarTabType = 'filters' | 'pricing' | 'watermark' | 'face';
 
 export const Sidebar: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -57,7 +56,6 @@ export const Sidebar: React.FC = () => {
             <Separator className="my-4" />
 
             {activeTab === 'filters' && <FiltersTab />}
-            {activeTab === 'adjustments' && <AdjustmentsTab />}
             {activeTab === 'pricing' && <PricingTab />}
             {activeTab === 'watermark' && <WatermarkTab />}
             {activeTab === 'face' && <FaceDetectionTab />}

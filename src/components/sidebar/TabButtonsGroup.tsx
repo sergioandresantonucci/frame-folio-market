@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Sliders, Palette, CircleDollarSign, Image, ScanFace } from 'lucide-react';
+import { Sliders, CircleDollarSign, Image, ScanFace } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { SidebarTabType } from './Sidebar';
@@ -33,19 +33,6 @@ export const TabButtonsGroup: React.FC<TabButtonsGroupProps> = ({
       >
         <Sliders className="h-5 w-5 mr-2" />
         {isMobile && "Filters"}
-      </Button>
-
-      <Button 
-        variant={activeTab === 'adjustments' ? 'default' : 'outline'} 
-        size={isMobile ? "sm" : "icon"}
-        className={cn(
-          isMobile ? "w-full justify-start" : "h-10 w-10",
-          activeTab === 'adjustments' && "bg-magenta hover:bg-magenta/90"
-        )}
-        onClick={() => setActiveTab('adjustments')}
-      >
-        <Palette className="h-5 w-5 mr-2" />
-        {isMobile && "Color Correction"}
       </Button>
 
       <Button 
