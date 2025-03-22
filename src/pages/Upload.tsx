@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePhotoContext, Photo } from '@/context/PhotoContext';
@@ -17,7 +16,6 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 
-// Helper function to generate a unique ID
 const generateId = () => `photo-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
 interface UploadPreviewProps {
@@ -135,7 +133,6 @@ const UploadContent: React.FC = () => {
     
     setFiles(prev => [...prev, ...newFiles]);
     
-    // Reset the input value to allow selecting the same file again
     e.target.value = '';
   }, []);
   
@@ -167,7 +164,6 @@ const UploadContent: React.FC = () => {
     
     setIsUploading(true);
     
-    // Mark all files as uploading
     setFiles(prev => 
       prev.map(file => ({
         ...file,
@@ -175,7 +171,6 @@ const UploadContent: React.FC = () => {
       }))
     );
     
-    // Upload files to Supabase storage and create records
     const uploadPromises = files.map(async (fileItem) => {
       return new Promise<Photo>(async (resolve, reject) => {
         try {
@@ -183,82 +178,105 @@ const UploadContent: React.FC = () => {
           const fileName = `${uuidv4()}.${fileExt}`;
           const filePath = `${user.id}/${fileName}`;
           
-          // Upload file to Supabase Storage
-          const { error: uploadError, data } = await supabase.storage
-            .from('photos')
-            .upload(filePath, fileItem.file, {
-              cacheControl: '3600',
-              upsert: false,
-              progressCallback: (progress) => {
-                setFiles(prev => 
-                  prev.map(f => f.id === fileItem.id 
-                    ? { ...f, progress: (progress.loaded / progress.total) * 100 } 
-                    : f
-                  )
-                );
-              },
-            });
-            
-          if (uploadError) {
+          const onProgress = (progress: { loaded: number; total: number }) => {
             setFiles(prev => 
-              prev.map(f => f.id === fileItem.id ? { ...f, status: 'error' } : f)
+              prev.map(f => f.id === fileItem.id 
+                ? { ...f, progress: (progress.loaded / progress.total) * 100 } 
+                : f
+              )
             );
-            reject(uploadError);
-            return;
-          }
-          
-          // Get public URL for the uploaded file
-          const { data: { publicUrl } } = supabase.storage
-            .from('photos')
-            .getPublicUrl(filePath);
-          
-          // Create thumbnail (in a real app, you might want to generate a real thumbnail)
-          // For now, we'll use the same image URL
-          
-          // Store record in the database
-          const { error: dbError, data: photoData } = await supabase
-            .from('photos')
-            .insert({
-              user_id: user.id,
-              storage_path: filePath,
-              thumbnail_path: filePath,
-              title: fileItem.file.name,
-              photographer,
-              event_date: eventName || eventDate,
-              price: 10,
-              watermarked: true,
-            })
-            .select()
-            .single();
-            
-          if (dbError) {
-            setFiles(prev => 
-              prev.map(f => f.id === fileItem.id ? { ...f, status: 'error' } : f)
-            );
-            reject(dbError);
-            return;
-          }
-          
-          // Update file status to success
-          setFiles(prev => 
-            prev.map(f => f.id === fileItem.id ? { ...f, progress: 100, status: 'success' } : f)
-          );
-          
-          // Create the photo object for the PhotoContext
-          const photo: Photo = {
-            id: photoData.id,
-            src: publicUrl,
-            thumbnail: publicUrl,
-            price: photoData.price || 10,
-            watermarked: photoData.watermarked || true,
-            selected: false,
-            photographer: photoData.photographer,
-            date: new Date().toISOString().split('T')[0],
-            eventDate: photoData.event_date,
-            name: fileItem.file.name
           };
           
-          resolve(photo);
+          const options = {
+            cacheControl: '3600',
+            upsert: false
+          };
+          
+          const xhr = new XMLHttpRequest();
+          const formData = new FormData();
+          formData.append('file', fileItem.file);
+          
+          xhr.upload.addEventListener('progress', onProgress);
+          
+          xhr.open('POST', `${supabase.storageUrl}/object/photos/${filePath}`);
+          xhr.setRequestHeader('Authorization', `Bearer ${supabase.supabaseKey}`);
+          
+          xhr.onload = async () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              const { error: uploadError, data } = await supabase.storage
+                .from('photos')
+                .upload(filePath, fileItem.file, options);
+                
+              if (uploadError) {
+                setFiles(prev => 
+                  prev.map(f => f.id === fileItem.id ? { ...f, status: 'error' } : f)
+                );
+                reject(uploadError);
+                return;
+              }
+              
+              const { data: { publicUrl } } = supabase.storage
+                .from('photos')
+                .getPublicUrl(filePath);
+              
+              const { error: dbError, data: photoData } = await supabase
+                .from('photos')
+                .insert({
+                  user_id: user.id,
+                  storage_path: filePath,
+                  thumbnail_path: filePath,
+                  title: fileItem.file.name,
+                  photographer,
+                  event_date: eventName || eventDate,
+                  price: 10,
+                  watermarked: true,
+                })
+                .select()
+                .single();
+                
+              if (dbError) {
+                setFiles(prev => 
+                  prev.map(f => f.id === fileItem.id ? { ...f, status: 'error' } : f)
+                );
+                reject(dbError);
+                return;
+              }
+              
+              setFiles(prev => 
+                prev.map(f => f.id === fileItem.id ? { ...f, progress: 100, status: 'success' } : f)
+              );
+              
+              const photo: Photo = {
+                id: photoData.id,
+                src: publicUrl,
+                thumbnail: publicUrl,
+                price: photoData.price || 10,
+                watermarked: photoData.watermarked || true,
+                selected: false,
+                photographer: photoData.photographer,
+                date: new Date().toISOString().split('T')[0],
+                eventDate: photoData.event_date,
+                name: fileItem.file.name
+              };
+              
+              resolve(photo);
+            } else {
+              setFiles(prev => 
+                prev.map(f => f.id === fileItem.id ? { ...f, status: 'error' } : f)
+              );
+              reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
+          };
+          
+          xhr.onerror = () => {
+            setFiles(prev => 
+              prev.map(f => f.id === fileItem.id ? { ...f, status: 'error' } : f)
+            );
+            reject(new Error('Upload failed'));
+          };
+          
+          xhr.send(formData);
+          
         } catch (error) {
           console.error("Upload error:", error);
           setFiles(prev => 
@@ -270,15 +288,12 @@ const UploadContent: React.FC = () => {
     });
     
     try {
-      // Wait for all uploads to complete
       const uploadedPhotos = await Promise.all(uploadPromises);
       
-      // Add all uploaded photos to context
       addPhotos(uploadedPhotos);
       
       toast.success(`${files.length} foto caricate con successo`);
       
-      // Navigate to gallery after a short delay
       setTimeout(() => {
         navigate('/gallery');
       }, 1500);
@@ -290,7 +305,6 @@ const UploadContent: React.FC = () => {
     }
   }, [files, photographer, eventDate, eventName, addPhotos, navigate, user]);
   
-  // If user is not logged in, redirect to auth page
   React.useEffect(() => {
     if (!user) {
       toast.error("Devi effettuare l'accesso per caricare le foto");
