@@ -237,7 +237,7 @@ const UploadContent: React.FC = () => {
             .from('photos')
             .getPublicUrl(filePath);
           
-          // Save photo information to the database
+          // Save photo information to the database - now without requiring user_id
           const { error: dbError, data: photoData } = await supabase
             .from('photos')
             .insert({
@@ -248,6 +248,7 @@ const UploadContent: React.FC = () => {
               event_date: eventName || eventDate,
               price: 10,
               watermarked: true,
+              // user_id is now optional so we can omit it for anonymous uploads
             })
             .select()
             .single();
