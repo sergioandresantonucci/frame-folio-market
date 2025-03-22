@@ -32,7 +32,7 @@ export const AdjustmentsTab: React.FC = () => {
   } = usePhotoAdjustments();
 
   return (
-    <div className="space-y-4 animate-fadeIn">
+    <div className="space-y-4 animate-fadeIn flex flex-col">
       <AdjustmentSlider
         id="brightness"
         label="Luminosità"

@@ -5,39 +5,43 @@ import { toast } from 'sonner';
  * Finds the photo element in the DOM, either in grid or viewer
  */
 export const findPhotoElement = (photoId: string): HTMLImageElement | null => {
-  // Use document.querySelector to find the image element
-  const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
+  // Look for the image in the grid
+  const gridElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
   
-  // If we can't find the element in the grid, try to find it in the viewer
-  const viewerPhotoElement = document.querySelector(`.photo-viewer-image`) as HTMLImageElement;
+  // Look for the image in the viewer
+  const viewerElement = document.querySelector(`.photo-viewer-image`) as HTMLImageElement;
   
-  // Use either the grid element or the viewer element
-  return photoElement || viewerPhotoElement || null;
+  console.log(`Looking for photo elements: Grid=${!!gridElement}, Viewer=${!!viewerElement}`);
+  
+  return gridElement || viewerElement || null;
 };
 
 /**
  * Applies a filter string to the photo elements
  */
 export const applyFilterToElements = (photoId: string, filterString: string): boolean => {
-  const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
-  const viewerPhotoElement = document.querySelector(`.photo-viewer-image`) as HTMLImageElement;
+  console.log(`Attempting to apply filter: ${filterString} to photo ${photoId}`);
+  
+  // Get all related elements that need the filter
+  const gridElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
+  const viewerElement = document.querySelector(`.photo-viewer-image`) as HTMLImageElement;
   
   let applied = false;
   
-  if (photoElement) {
-    photoElement.style.filter = filterString.trim();
+  if (gridElement) {
+    console.log("Applying filter to grid element:", gridElement);
+    gridElement.style.filter = filterString.trim();
     applied = true;
-    console.log("Applied filter to grid photo:", filterString);
   }
   
-  if (viewerPhotoElement) {
-    viewerPhotoElement.style.filter = filterString.trim();
+  if (viewerElement) {
+    console.log("Applying filter to viewer element:", viewerElement);
+    viewerElement.style.filter = filterString.trim();
     applied = true;
-    console.log("Applied filter to viewer photo:", filterString);
   }
   
   if (!applied) {
-    console.error("Cannot find photo element with ID:", photoId);
+    console.error("Cannot find any photo elements with ID:", photoId);
     toast.error("Impossibile trovare l'elemento foto selezionato");
     return false;
   }
@@ -49,6 +53,7 @@ export const applyFilterToElements = (photoId: string, filterString: string): bo
  * Saves the current filter in session storage
  */
 export const saveFilterToStorage = (photoId: string, filterString: string): void => {
+  console.log(`Saving filter to storage for photo ${photoId}:`, filterString);
   sessionStorage.setItem(`filter-${photoId}`, filterString);
 };
 
@@ -56,12 +61,15 @@ export const saveFilterToStorage = (photoId: string, filterString: string): void
  * Retrieves a stored filter from session storage
  */
 export const getFilterFromStorage = (photoId: string): string | null => {
-  return sessionStorage.getItem(`filter-${photoId}`);
+  const filter = sessionStorage.getItem(`filter-${photoId}`);
+  console.log(`Retrieved filter from storage for photo ${photoId}:`, filter);
+  return filter;
 };
 
 /**
  * Removes a filter from session storage
  */
 export const removeFilterFromStorage = (photoId: string): void => {
+  console.log(`Removing filter from storage for photo ${photoId}`);
   sessionStorage.removeItem(`filter-${photoId}`);
 };

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { usePhotoContext } from '@/context/photo/PhotoContext';
 import { toast } from 'sonner';
@@ -53,42 +52,37 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
       return;
     }
     
-    // Find the active photo element and apply CSS filters
     const photoId = state.activePhoto.id;
-    const targetElement = findPhotoElement(photoId);
+    console.log("Applying color adjustments to photo:", photoId);
     
-    if (targetElement) {
-      console.log("Found photo element, applying filters:", targetElement);
+    // Save current filter in history before applying new one
+    const currentFilter = getFilterFromStorage(photoId);
+    if (currentFilter) {
+      saveToHistory(photoId, currentFilter);
+    }
+    
+    // Build the filter string from current adjustment values
+    const filterString = buildFilterString(
+      brightness, 
+      contrast, 
+      saturation, 
+      clarity, 
+      temperature, 
+      highlights
+    );
+    
+    console.log("Filter string generated:", filterString);
+    
+    // Apply the filter to both grid and viewer elements
+    if (applyFilterToElements(photoId, filterString)) {
+      // Store the filter in sessionStorage to persist through renders
+      saveFilterToStorage(photoId, filterString);
       
-      // Save current filter in history before applying new one
-      if (targetElement.style.filter) {
-        saveToHistory(photoId, targetElement.style.filter);
-      }
-      
-      // Build the filter string from current adjustment values
-      const filterString = buildFilterString(
-        brightness, 
-        contrast, 
-        saturation, 
-        clarity, 
-        temperature, 
-        highlights
-      );
-      
-      console.log("Applying filter:", filterString);
-      
-      // Apply the filter to both grid and viewer elements
-      if (applyFilterToElements(photoId, filterString)) {
-        // Store the filter in sessionStorage to persist through renders
-        saveFilterToStorage(photoId, filterString);
-        
-        toast.success("Regolazioni colore applicate", {
-          description: `Luminosità: ${brightness}, Contrasto: ${contrast}, Saturazione: ${saturation}, Temperatura: ${temperature}`
-        });
-      }
+      toast.success("Regolazioni colore applicate", {
+        description: `Luminosità: ${brightness}, Contrasto: ${contrast}, Saturazione: ${saturation}, Temperatura: ${temperature}`
+      });
     } else {
-      console.error("Cannot find photo element with ID:", photoId);
-      toast.error("Impossibile trovare l'elemento foto selezionato");
+      console.error("Failed to apply filters to photo elements");
     }
   };
 
