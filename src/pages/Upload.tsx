@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PhotoProvider, usePhotoContext, Photo } from '@/context/PhotoContext';
+import { usePhotoContext, Photo } from '@/context/PhotoContext';
 import { Layout } from '@/components/ui/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,9 @@ import { toast } from 'sonner';
 import { Upload as UploadIcon, ImagePlus, X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { v4 as uuidv4 } from 'uuid';
 
 // Helper function to generate a unique ID
 const generateId = () => `photo-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -118,6 +121,7 @@ const UploadContent: React.FC = () => {
   const { addPhotos } = usePhotoContext();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { user } = useAuth();
   
   const handleFilesSelected = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return;
@@ -140,18 +144,24 @@ const UploadContent: React.FC = () => {
   }, []);
   
   const handleUpload = useCallback(async () => {
+    if (!user) {
+      toast.error("Devi effettuare l'accesso per caricare le foto");
+      navigate('/auth');
+      return;
+    }
+    
     if (files.length === 0) {
-      toast.warning("Please select files to upload");
+      toast.warning("Seleziona delle foto da caricare");
       return;
     }
     
     if (!photographer) {
-      toast.warning("Please enter photographer name");
+      toast.warning("Inserisci il nome del fotografo");
       return;
     }
     
     if (!eventDate) {
-      toast.warning("Please enter event date");
+      toast.warning("Inserisci la data dell'evento");
       return;
     }
     
@@ -165,51 +175,97 @@ const UploadContent: React.FC = () => {
       }))
     );
     
-    // Simulate upload process for each file
+    // Upload files to Supabase storage and create records
     const uploadPromises = files.map(async (fileItem) => {
-      return new Promise<Photo>((resolve) => {
-        let progress = 0;
-        
-        // Simulate progress updates
-        const interval = setInterval(() => {
-          progress += Math.random() * 20;
+      return new Promise<Photo>(async (resolve, reject) => {
+        try {
+          const fileExt = fileItem.file.name.split('.').pop();
+          const fileName = `${uuidv4()}.${fileExt}`;
+          const filePath = `${user.id}/${fileName}`;
           
-          if (progress >= 100) {
-            progress = 100;
-            clearInterval(interval);
+          // Upload file to Supabase Storage
+          const { error: uploadError, data } = await supabase.storage
+            .from('photos')
+            .upload(filePath, fileItem.file, {
+              cacheControl: '3600',
+              upsert: false,
+              progressCallback: (progress) => {
+                setFiles(prev => 
+                  prev.map(f => f.id === fileItem.id 
+                    ? { ...f, progress: (progress.loaded / progress.total) * 100 } 
+                    : f
+                  )
+                );
+              },
+            });
             
-            // Create a photo object from the file
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              // Update file status to success
-              setFiles(prev => 
-                prev.map(f => f.id === fileItem.id ? { ...f, progress: 100, status: 'success' } : f)
-              );
-              
-              // Create the photo object
-              const photo: Photo = {
-                id: fileItem.id,
-                src: reader.result as string,
-                thumbnail: reader.result as string,
-                price: 10, // Default price
-                watermarked: true, // Default with watermark
-                selected: false,
-                photographer,
-                date: new Date().toISOString().split('T')[0],
-                eventDate: eventName || eventDate,
-              };
-              
-              resolve(photo);
-            };
-            
-            reader.readAsDataURL(fileItem.file);
-          } else {
-            // Update progress
+          if (uploadError) {
             setFiles(prev => 
-              prev.map(f => f.id === fileItem.id ? { ...f, progress } : f)
+              prev.map(f => f.id === fileItem.id ? { ...f, status: 'error' } : f)
             );
+            reject(uploadError);
+            return;
           }
-        }, 200);
+          
+          // Get public URL for the uploaded file
+          const { data: { publicUrl } } = supabase.storage
+            .from('photos')
+            .getPublicUrl(filePath);
+          
+          // Create thumbnail (in a real app, you might want to generate a real thumbnail)
+          // For now, we'll use the same image URL
+          
+          // Store record in the database
+          const { error: dbError, data: photoData } = await supabase
+            .from('photos')
+            .insert({
+              user_id: user.id,
+              storage_path: filePath,
+              thumbnail_path: filePath,
+              title: fileItem.file.name,
+              photographer,
+              event_date: eventName || eventDate,
+              price: 10,
+              watermarked: true,
+            })
+            .select()
+            .single();
+            
+          if (dbError) {
+            setFiles(prev => 
+              prev.map(f => f.id === fileItem.id ? { ...f, status: 'error' } : f)
+            );
+            reject(dbError);
+            return;
+          }
+          
+          // Update file status to success
+          setFiles(prev => 
+            prev.map(f => f.id === fileItem.id ? { ...f, progress: 100, status: 'success' } : f)
+          );
+          
+          // Create the photo object for the PhotoContext
+          const photo: Photo = {
+            id: photoData.id,
+            src: publicUrl,
+            thumbnail: publicUrl,
+            price: photoData.price || 10,
+            watermarked: photoData.watermarked || true,
+            selected: false,
+            photographer: photoData.photographer,
+            date: new Date().toISOString().split('T')[0],
+            eventDate: photoData.event_date,
+            name: fileItem.file.name
+          };
+          
+          resolve(photo);
+        } catch (error) {
+          console.error("Upload error:", error);
+          setFiles(prev => 
+            prev.map(f => f.id === fileItem.id ? { ...f, status: 'error' } : f)
+          );
+          reject(error);
+        }
       });
     });
     
@@ -220,41 +276,50 @@ const UploadContent: React.FC = () => {
       // Add all uploaded photos to context
       addPhotos(uploadedPhotos);
       
-      toast.success(`Successfully uploaded ${files.length} photos`);
+      toast.success(`${files.length} foto caricate con successo`);
       
       // Navigate to gallery after a short delay
       setTimeout(() => {
         navigate('/gallery');
       }, 1500);
     } catch (error) {
-      toast.error("Failed to upload some photos");
+      console.error("Failed to upload photos:", error);
+      toast.error("Si è verificato un errore durante il caricamento delle foto");
     } finally {
       setIsUploading(false);
     }
-  }, [files, photographer, eventDate, eventName, addPhotos, navigate]);
+  }, [files, photographer, eventDate, eventName, addPhotos, navigate, user]);
+  
+  // If user is not logged in, redirect to auth page
+  React.useEffect(() => {
+    if (!user) {
+      toast.error("Devi effettuare l'accesso per caricare le foto");
+      navigate('/auth');
+    }
+  }, [user, navigate]);
   
   return (
     <Layout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Upload Photos</h1>
+          <h1 className="text-2xl font-semibold">Carica Foto</h1>
         </div>
         
         <div className="grid gap-6 md:grid-cols-2">
           <Card className="p-6">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="photographer">Photographer</Label>
+                <Label htmlFor="photographer">Fotografo</Label>
                 <Input 
                   id="photographer" 
-                  placeholder="Enter photographer name" 
+                  placeholder="Inserisci il nome del fotografo" 
                   value={photographer}
                   onChange={(e) => setPhotographer(e.target.value)}
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="eventDate">Event Date</Label>
+                <Label htmlFor="eventDate">Data Evento</Label>
                 <Input 
                   id="eventDate" 
                   type="date" 
@@ -264,10 +329,10 @@ const UploadContent: React.FC = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="eventName">Event Name</Label>
+                <Label htmlFor="eventName">Nome Evento</Label>
                 <Input 
                   id="eventName" 
-                  placeholder="Wedding, Birthday, etc." 
+                  placeholder="Matrimonio, Compleanno, ecc." 
                   value={eventName}
                   onChange={(e) => setEventName(e.target.value)}
                 />
@@ -277,7 +342,7 @@ const UploadContent: React.FC = () => {
                 <Button asChild className="w-full">
                   <label>
                     <UploadIcon className="h-4 w-4 mr-2" />
-                    Select Photos
+                    Seleziona Foto
                     <Input 
                       type="file" 
                       accept="image/*" 
@@ -293,7 +358,7 @@ const UploadContent: React.FC = () => {
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">Selected Photos ({files.length})</h3>
+              <h3 className="text-sm font-medium">Foto selezionate ({files.length})</h3>
               
               <div className="flex items-center gap-2">
                 <Button 
@@ -302,7 +367,7 @@ const UploadContent: React.FC = () => {
                   onClick={() => setFiles([])}
                   disabled={files.length === 0 || isUploading}
                 >
-                  Clear All
+                  Cancella tutto
                 </Button>
                 
                 <Button 
@@ -314,11 +379,11 @@ const UploadContent: React.FC = () => {
                   {isUploading ? (
                     <>
                       <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                      Uploading...
+                      Caricamento...
                     </>
                   ) : (
                     <>
-                      Upload {files.length} Photos
+                      Carica {files.length} Foto
                     </>
                   )}
                 </Button>
@@ -328,14 +393,14 @@ const UploadContent: React.FC = () => {
             {files.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-[300px] border-2 border-dashed rounded-md p-6 text-center">
                 <ImagePlus className="h-12 w-12 text-gray-300 mb-4" />
-                <h3 className="text-sm font-medium text-gray-900 mb-1">No photos selected</h3>
+                <h3 className="text-sm font-medium text-gray-900 mb-1">Nessuna foto selezionata</h3>
                 <p className="text-xs text-gray-500 mb-4">
-                  Click the "Select Photos" button to choose images for upload
+                  Clicca su "Seleziona Foto" per scegliere le immagini da caricare
                 </p>
                 <Button asChild variant="outline" size="sm">
                   <label>
                     <UploadIcon className="h-4 w-4 mr-2" />
-                    Select Photos
+                    Seleziona Foto
                     <Input 
                       type="file" 
                       accept="image/*" 
@@ -370,11 +435,7 @@ const UploadContent: React.FC = () => {
 };
 
 const Upload: React.FC = () => {
-  return (
-    <PhotoProvider>
-      <UploadContent />
-    </PhotoProvider>
-  );
+  return <UploadContent />;
 };
 
 export default Upload;

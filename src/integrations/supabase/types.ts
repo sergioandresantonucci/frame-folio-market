@@ -9,7 +9,78 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      photos: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          event_date: string | null
+          id: string
+          photographer: string | null
+          price: number | null
+          storage_path: string
+          thumbnail_path: string | null
+          title: string | null
+          updated_at: string | null
+          user_id: string
+          watermarked: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          event_date?: string | null
+          id?: string
+          photographer?: string | null
+          price?: number | null
+          storage_path: string
+          thumbnail_path?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id: string
+          watermarked?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          event_date?: string | null
+          id?: string
+          photographer?: string | null
+          price?: number | null
+          storage_path?: string
+          thumbnail_path?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string
+          watermarked?: boolean | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          full_name: string | null
+          id: string
+          updated_at: string | null
+          username: string | null
+          website: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string | null
+          username?: string | null
+          website?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+          username?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
