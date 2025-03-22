@@ -2,9 +2,35 @@
 import { useState, useEffect } from 'react';
 import { usePhotoContext } from '@/context/photo/PhotoContext';
 import { toast } from 'sonner';
+import { PhotoAdjustmentsHook } from './types';
+import { useAdjustmentHistory } from './useAdjustmentHistory';
+import { 
+  findPhotoElement, 
+  applyFilterToElements, 
+  saveFilterToStorage, 
+  getFilterFromStorage,
+  removeFilterFromStorage 
+} from './utils/domUtils';
+import { 
+  buildFilterString, 
+  extractValuesFromFilter 
+} from './utils/filterUtils';
+import {
+  getAutoFixValues,
+  getVibrantPresetValues,
+  getSunsetPresetValues,
+  getCoolPresetValues,
+  applyPreset
+} from './utils/presetUtils';
 
-export const usePhotoAdjustments = () => {
+export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
   const { state } = usePhotoContext();
+  const { 
+    saveToHistory, 
+    getFromHistory, 
+    removeFromHistory,
+    hasHistoryFor 
+  } = useAdjustmentHistory();
   
   // State for color adjustments
   const [brightness, setBrightness] = useState<number>(0);
@@ -14,14 +40,11 @@ export const usePhotoAdjustments = () => {
   const [clarity, setClarity] = useState<number>(0);
   const [highlights, setHighlights] = useState<number>(0);
 
-  // History for undo functionality
-  const [history, setHistory] = useState<{[key: string]: string}>({});
-
   // Check if we have an active photo
   const hasActivePhoto = !!state.activePhoto;
   
   // Check if we can undo
-  const canUndo = hasActivePhoto && !!state.activePhoto && !!history[state.activePhoto.id];
+  const canUndo = hasActivePhoto && !!state.activePhoto && hasHistoryFor(state.activePhoto.id);
 
   // Apply color adjustments function
   const applyColorAdjustments = () => {
@@ -32,53 +55,37 @@ export const usePhotoAdjustments = () => {
     
     // Find the active photo element and apply CSS filters
     const photoId = state.activePhoto.id;
-    
-    // Use document.querySelector to find the image element
-    const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
-    
-    // If we can't find the element in the grid, try to find it in the viewer
-    const viewerPhotoElement = document.querySelector(`.photo-viewer-image`) as HTMLImageElement;
-    
-    // Use either the grid element or the viewer element
-    const targetElement = photoElement || viewerPhotoElement;
+    const targetElement = findPhotoElement(photoId);
     
     if (targetElement) {
       console.log("Found photo element, applying filters:", targetElement);
       
       // Save current filter in history before applying new one
       if (targetElement.style.filter) {
-        setHistory(prev => ({
-          ...prev,
-          [photoId]: targetElement.style.filter
-        }));
+        saveToHistory(photoId, targetElement.style.filter);
       }
       
-      // Apply CSS filters directly to the image
-      const filterString = `
-        brightness(${1 + brightness/100})
-        contrast(${1 + contrast/100})
-        saturate(${1 + saturation/100})
-        blur(${clarity < 0 ? Math.abs(clarity/200) : 0}px)
-        ${temperature > 0 ? `sepia(${temperature/100})` : ''}
-        ${temperature < 0 ? `hue-rotate(${temperature * 1.8}deg)` : ''}
-        ${highlights > 0 ? `opacity(${1 - highlights/400})` : ''}
-        ${highlights < 0 ? `drop-shadow(0 0 ${Math.abs(highlights)/50}px rgba(255,255,255,0.5))` : ''}
-      `;
+      // Build the filter string from current adjustment values
+      const filterString = buildFilterString(
+        brightness, 
+        contrast, 
+        saturation, 
+        clarity, 
+        temperature, 
+        highlights
+      );
       
       console.log("Applying filter:", filterString);
-      targetElement.style.filter = filterString.trim();
       
-      // Store the filter in sessionStorage to persist through renders
-      sessionStorage.setItem(`filter-${photoId}`, filterString);
-      
-      // Apply the same filter to both the grid and viewer images if both exist
-      if (photoElement && viewerPhotoElement && photoElement !== viewerPhotoElement) {
-        viewerPhotoElement.style.filter = filterString.trim();
+      // Apply the filter to both grid and viewer elements
+      if (applyFilterToElements(photoId, filterString)) {
+        // Store the filter in sessionStorage to persist through renders
+        saveFilterToStorage(photoId, filterString);
+        
+        toast.success("Regolazioni colore applicate", {
+          description: `Luminosità: ${brightness}, Contrasto: ${contrast}, Saturazione: ${saturation}, Temperatura: ${temperature}`
+        });
       }
-      
-      toast.success("Regolazioni colore applicate", {
-        description: `Luminosità: ${brightness}, Contrasto: ${contrast}, Saturazione: ${saturation}, Temperatura: ${temperature}`
-      });
     } else {
       console.error("Cannot find photo element with ID:", photoId);
       toast.error("Impossibile trovare l'elemento foto selezionato");
@@ -89,51 +96,22 @@ export const usePhotoAdjustments = () => {
   useEffect(() => {
     if (state.activePhoto) {
       const photoId = state.activePhoto.id;
-      const savedFilter = sessionStorage.getItem(`filter-${photoId}`);
+      const savedFilter = getFilterFromStorage(photoId);
       
       if (savedFilter) {
-        // Apply to grid image
-        const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
-        if (photoElement) {
-          photoElement.style.filter = savedFilter;
-        }
+        // Apply saved filter to DOM elements
+        applyFilterToElements(photoId, savedFilter);
         
-        // Apply to viewer image if it exists
-        const viewerPhotoElement = document.querySelector(`.photo-viewer-image`) as HTMLImageElement;
-        if (viewerPhotoElement) {
-          viewerPhotoElement.style.filter = savedFilter;
-        }
+        // Extract adjustment values from saved filter
+        const values = extractValuesFromFilter(savedFilter);
         
-        // Try to extract values from saved filter
-        const brightnessMatch = savedFilter.match(/brightness\(([0-9.]+)\)/);
-        const contrastMatch = savedFilter.match(/contrast\(([0-9.]+)\)/);
-        const saturateMatch = savedFilter.match(/saturate\(([0-9.]+)\)/);
-        const blurMatch = savedFilter.match(/blur\(([0-9.]+)px\)/);
-        const sepiaMatch = savedFilter.match(/sepia\(([0-9.]+)\)/);
-        const hueRotateMatch = savedFilter.match(/hue-rotate\(([0-9.-]+)deg\)/);
-        const opacityMatch = savedFilter.match(/opacity\(([0-9.]+)\)/);
-        const dropShadowMatch = savedFilter.match(/drop-shadow\(0 0 ([0-9.]+)px/);
-        
-        if (brightnessMatch) setBrightness(Math.round((parseFloat(brightnessMatch[1]) - 1) * 100));
-        if (contrastMatch) setContrast(Math.round((parseFloat(contrastMatch[1]) - 1) * 100));
-        if (saturateMatch) setSaturation(Math.round((parseFloat(saturateMatch[1]) - 1) * 100));
-        if (blurMatch) setClarity(-Math.round(parseFloat(blurMatch[1]) * 200));
-        
-        if (sepiaMatch) {
-          setTemperature(Math.round(parseFloat(sepiaMatch[1]) * 100));
-        } else if (hueRotateMatch) {
-          setTemperature(Math.round(parseFloat(hueRotateMatch[1]) / 1.8));
-        } else {
-          setTemperature(0);
-        }
-        
-        if (opacityMatch) {
-          setHighlights(Math.round((1 - parseFloat(opacityMatch[1])) * 400));
-        } else if (dropShadowMatch) {
-          setHighlights(-Math.round(parseFloat(dropShadowMatch[1]) * 50));
-        } else {
-          setHighlights(0);
-        }
+        // Update state with extracted values
+        setBrightness(values.brightness);
+        setContrast(values.contrast);
+        setSaturation(values.saturation);
+        setClarity(values.clarity);
+        setTemperature(values.temperature);
+        setHighlights(values.highlights);
       } else {
         // Reset sliders if no saved filter
         setBrightness(0);
@@ -151,27 +129,26 @@ export const usePhotoAdjustments = () => {
     if (!state.activePhoto) return;
     
     const photoId = state.activePhoto.id;
-    const previousFilter = history[photoId];
+    const previousFilter = getFromHistory(photoId);
     
     if (previousFilter) {
-      // Apply to grid image
-      const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
-      if (photoElement) {
-        photoElement.style.filter = previousFilter;
-      }
+      // Apply previous filter to DOM elements
+      applyFilterToElements(photoId, previousFilter);
       
-      // Apply to viewer image
-      const viewerPhotoElement = document.querySelector(`.photo-viewer-image`) as HTMLImageElement;
-      if (viewerPhotoElement) {
-        viewerPhotoElement.style.filter = previousFilter;
-      }
+      // Update session storage
+      saveFilterToStorage(photoId, previousFilter);
       
-      sessionStorage.setItem(`filter-${photoId}`, previousFilter);
+      // Extract and update adjustment values
+      const values = extractValuesFromFilter(previousFilter);
+      setBrightness(values.brightness);
+      setContrast(values.contrast);
+      setSaturation(values.saturation);
+      setClarity(values.clarity);
+      setTemperature(values.temperature);
+      setHighlights(values.highlights);
       
       // Remove this entry from history
-      const newHistory = {...history};
-      delete newHistory[photoId];
-      setHistory(newHistory);
+      removeFromHistory(photoId);
       
       toast.info("Regolazione precedente ripristinata");
     } else {
@@ -186,13 +163,14 @@ export const usePhotoAdjustments = () => {
       return;
     }
     
-    // Set some good looking auto-adjustment values
-    setBrightness(10);
-    setContrast(15);
-    setSaturation(5);
-    setTemperature(-3);
-    setClarity(5);
-    setHighlights(0);
+    // Set auto-fix values
+    const values = getAutoFixValues();
+    setBrightness(values.brightness);
+    setContrast(values.contrast);
+    setSaturation(values.saturation);
+    setTemperature(values.temperature);
+    setClarity(values.clarity);
+    setHighlights(values.highlights);
     
     toast.success("Correzione automatica applicata");
     
@@ -204,68 +182,56 @@ export const usePhotoAdjustments = () => {
 
   // Apply vibrant preset
   const applyVibrantPreset = () => {
-    if (!state.activePhoto) {
-      toast.error("Seleziona una foto per applicare il preset");
-      return;
-    }
-    
-    setBrightness(10);
-    setContrast(20);
-    setSaturation(30);
-    setTemperature(5);
-    setClarity(0);
-    setHighlights(0);
-    
-    toast.success("Preset 'Vibrante' applicato");
-    
-    // Apply the changes immediately
-    setTimeout(() => {
-      applyColorAdjustments();
-    }, 100);
+    applyPreset('Vibrante', hasActivePhoto, () => {
+      const values = getVibrantPresetValues();
+      setBrightness(values.brightness);
+      setContrast(values.contrast);
+      setSaturation(values.saturation);
+      setTemperature(values.temperature);
+      setClarity(values.clarity);
+      setHighlights(values.highlights);
+      
+      // Apply the changes immediately
+      setTimeout(() => {
+        applyColorAdjustments();
+      }, 100);
+    });
   };
 
   // Apply warm sunset preset
   const applySunsetPreset = () => {
-    if (!state.activePhoto) {
-      toast.error("Seleziona una foto per applicare il preset");
-      return;
-    }
-    
-    setBrightness(5);
-    setContrast(10);
-    setSaturation(15);
-    setTemperature(20);
-    setClarity(0);
-    setHighlights(10);
-    
-    toast.success("Preset 'Tramonto' applicato");
-    
-    // Apply the changes immediately
-    setTimeout(() => {
-      applyColorAdjustments();
-    }, 100);
+    applyPreset('Tramonto', hasActivePhoto, () => {
+      const values = getSunsetPresetValues();
+      setBrightness(values.brightness);
+      setContrast(values.contrast);
+      setSaturation(values.saturation);
+      setTemperature(values.temperature);
+      setClarity(values.clarity);
+      setHighlights(values.highlights);
+      
+      // Apply the changes immediately
+      setTimeout(() => {
+        applyColorAdjustments();
+      }, 100);
+    });
   };
 
   // Apply cool tone preset
   const applyCoolPreset = () => {
-    if (!state.activePhoto) {
-      toast.error("Seleziona una foto per applicare il preset");
-      return;
-    }
-    
-    setBrightness(0);
-    setContrast(10);
-    setSaturation(0);
-    setTemperature(-25);
-    setClarity(0);
-    setHighlights(-5);
-    
-    toast.success("Preset 'Freddo' applicato");
-    
-    // Apply the changes immediately
-    setTimeout(() => {
-      applyColorAdjustments();
-    }, 100);
+    applyPreset('Freddo', hasActivePhoto, () => {
+      const values = getCoolPresetValues();
+      setBrightness(values.brightness);
+      setContrast(values.contrast);
+      setSaturation(values.saturation);
+      setTemperature(values.temperature);
+      setClarity(values.clarity);
+      setHighlights(values.highlights);
+      
+      // Apply the changes immediately
+      setTimeout(() => {
+        applyColorAdjustments();
+      }, 100);
+    });
   };
 
   // Reset adjustments
@@ -286,19 +252,11 @@ export const usePhotoAdjustments = () => {
     if (state.activePhoto) {
       const photoId = state.activePhoto.id;
       
-      // Reset grid image
-      const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
-      if (photoElement) {
-        photoElement.style.filter = 'none';
-      }
+      // Apply 'none' filter to DOM elements
+      applyFilterToElements(photoId, 'none');
       
-      // Reset viewer image
-      const viewerPhotoElement = document.querySelector(`.photo-viewer-image`) as HTMLImageElement;
-      if (viewerPhotoElement) {
-        viewerPhotoElement.style.filter = 'none';
-      }
-      
-      sessionStorage.removeItem(`filter-${photoId}`);
+      // Remove from session storage
+      removeFilterFromStorage(photoId);
       toast.info("Regolazioni resettate");
     }
   };
