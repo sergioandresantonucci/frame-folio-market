@@ -46,7 +46,7 @@ type FormValues = z.infer<typeof formSchema>;
 interface EventModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (event: Omit<Event, 'id'>) => void;
+  onSave: (event: Omit<Event, 'id' | 'photoIds'>) => void;
 }
 
 export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave }) => {
