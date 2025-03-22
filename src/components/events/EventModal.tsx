@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -67,24 +66,30 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave 
 
   // Initialize Google Places Autocomplete
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.google && locationInputRef.current && !autocompleteRef.current) {
-      autocompleteRef.current = new window.google.maps.places.Autocomplete(locationInputRef.current, {
-        types: ['address'],
-      });
+    // Check if Google Maps API is loaded
+    if (isOpen && locationInputRef.current && window.google && window.google.maps && !autocompleteRef.current) {
+      try {
+        autocompleteRef.current = new window.google.maps.places.Autocomplete(locationInputRef.current, {
+          types: ['address'],
+        });
 
-      // Listen for place selection
-      autocompleteRef.current.addListener('place_changed', () => {
-        const place = autocompleteRef.current?.getPlace();
-        if (place?.formatted_address) {
-          form.setValue('location', place.formatted_address, { shouldValidate: true });
-        }
-      });
+        // Listen for place selection
+        autocompleteRef.current.addListener('place_changed', () => {
+          const place = autocompleteRef.current?.getPlace();
+          if (place?.formatted_address) {
+            form.setValue('location', place.formatted_address, { shouldValidate: true });
+          }
+        });
+      } catch (error) {
+        console.error("Error initializing Google Places Autocomplete:", error);
+      }
     }
 
     return () => {
       // Clean up listener when component unmounts
-      if (autocompleteRef.current) {
+      if (autocompleteRef.current && window.google && window.google.maps) {
         google.maps.event.clearInstanceListeners(autocompleteRef.current);
+        autocompleteRef.current = null;
       }
     };
   }, [form, isOpen]);

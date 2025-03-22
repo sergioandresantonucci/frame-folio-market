@@ -7,7 +7,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Photo Studio</title>
     <!-- Google Maps API for Places autocomplete -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
+    <script>
+      // Define a global google variable to avoid TypeScript errors
+      window.google = window.google || {};
+    </script>
+    <script async src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
   </head>
   <body>
     <div id="root"></div>
