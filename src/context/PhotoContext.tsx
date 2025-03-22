@@ -27,6 +27,7 @@ type PhotoState = {
     eventDate: string | null;
     date: string | null;
     hasFace: boolean | null;
+    numberRange: { from: number; to: number | null } | null;
   };
   isConnected: boolean;
   pendingUploads: Photo[];
@@ -91,6 +92,7 @@ const initialState: PhotoState = {
     eventDate: null,
     date: null,
     hasFace: null,
+    numberRange: null,
   },
   isConnected: navigator.onLine,
   pendingUploads: [],

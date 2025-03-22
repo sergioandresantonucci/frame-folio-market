@@ -1,16 +1,26 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePhotoContext } from '@/context/PhotoContext';
+import { Plus } from 'lucide-react';
 
 export const FiltersTab: React.FC = () => {
   const { setFilters } = usePhotoContext();
   const photographers = ['All Photographers', 'John Smith', 'Sarah Jones', 'Miguel Rodriguez'];
-  const events = ['All Events', 'Wedding', 'Corporate Event', 'Birthday Party', 'Conference'];
+  const events = ['All Events', 'Wedding', 'Corporate Event', 'Birthday Party', 'Conference', 'Graduation', 'Sports Event', 'Fashion Show'];
+  
+  const [fromPhoto, setFromPhoto] = useState<string>('1');
+  const [toPhoto, setToPhoto] = useState<string>('');
+  
+  const handleRangeFilter = () => {
+    const from = parseInt(fromPhoto) || 1;
+    const to = parseInt(toPhoto) || null;
+    setFilters({ numberRange: { from, to } });
+  };
 
   return (
     <div className="space-y-4 animate-fadeIn">
@@ -35,21 +45,59 @@ export const FiltersTab: React.FC = () => {
 
       <div className="space-y-2">
         <Label htmlFor="event">Event</Label>
-        <Select 
-          onValueChange={(value) => setFilters({ eventDate: value !== 'All Events' ? value : null })}
-          defaultValue="All Events"
+        <div className="flex space-x-2">
+          <Select 
+            onValueChange={(value) => setFilters({ eventDate: value !== 'All Events' ? value : null })}
+            defaultValue="All Events"
+          >
+            <SelectTrigger id="event" className="w-full">
+              <SelectValue placeholder="Select event" />
+            </SelectTrigger>
+            <SelectContent>
+              {events.map((event) => (
+                <SelectItem key={event} value={event}>
+                  {event}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button size="icon" variant="outline" title="Add new event">
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="photo-range">Photo Range</Label>
+        <div className="flex items-center space-x-2">
+          <Input 
+            id="from-photo" 
+            type="number" 
+            placeholder="From" 
+            min="1"
+            className="w-1/2" 
+            value={fromPhoto}
+            onChange={(e) => setFromPhoto(e.target.value)}
+          />
+          <span>to</span>
+          <Input 
+            id="to-photo" 
+            type="number" 
+            placeholder="To" 
+            min="1"
+            className="w-1/2" 
+            value={toPhoto}
+            onChange={(e) => setToPhoto(e.target.value)}
+          />
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="w-full mt-1"
+          onClick={handleRangeFilter}
         >
-          <SelectTrigger id="event" className="w-full">
-            <SelectValue placeholder="Select event" />
-          </SelectTrigger>
-          <SelectContent>
-            {events.map((event) => (
-              <SelectItem key={event} value={event}>
-                {event}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          Apply Range
+        </Button>
       </div>
 
       <div className="space-y-2">
@@ -78,7 +126,8 @@ export const FiltersTab: React.FC = () => {
             photographer: null,
             eventDate: null,
             date: null,
-            hasFace: null
+            hasFace: null,
+            numberRange: null
           })}
         >
           Clear Filters
