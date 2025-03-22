@@ -1,14 +1,23 @@
 
 import { toast } from 'sonner';
 
+// Cache for DOM elements to avoid repeated queries
+const elementCache: Record<string, HTMLImageElement[]> = {};
+
 /**
  * Finds all photo elements in the DOM with the given ID
+ * With performance optimization through caching and more specific selectors
  */
 export const findPhotoElements = (photoId: string): HTMLImageElement[] => {
+  // Check cache first
+  if (elementCache[photoId]?.length) {
+    return elementCache[photoId];
+  }
+
   const elements: HTMLImageElement[] = [];
   
   try {
-    // Find elements in the grid
+    // Find elements in the grid with more specific selectors
     const gridContainer = document.querySelector(`[data-photo-id="${photoId}"]`);
     if (gridContainer) {
       const gridImage = gridContainer.querySelector('img');
@@ -18,10 +27,11 @@ export const findPhotoElements = (photoId: string): HTMLImageElement[] => {
       }
     }
     
-    // Find the image in the viewer - more specific selector for dialog content
+    // Find the image in the viewer with more specific selection
     const viewerContainer = document.querySelector('div[role="dialog"]');
     if (viewerContainer) {
-      const viewerImage = viewerContainer.querySelector('img');
+      // Using a more specific path to the image in the dialog
+      const viewerImage = viewerContainer.querySelector('.max-h-full.max-w-full');
       if (viewerImage instanceof HTMLImageElement) {
         elements.push(viewerImage);
         console.log("Found viewer element");
@@ -29,9 +39,12 @@ export const findPhotoElements = (photoId: string): HTMLImageElement[] => {
     }
     
     if (elements.length === 0) {
-      console.error("No photo elements found with ID:", photoId);
+      console.warn("No photo elements found with ID:", photoId);
+      return [];
     } else {
       console.log(`Found ${elements.length} elements for photo ${photoId}`);
+      // Update cache
+      elementCache[photoId] = elements;
     }
   } catch (error) {
     console.error("Error finding photo elements:", error);
@@ -41,33 +54,45 @@ export const findPhotoElements = (photoId: string): HTMLImageElement[] => {
 };
 
 /**
- * Applies a filter string to the photo elements
+ * Clears the element cache for a specific photo or all photos
+ */
+export const clearElementCache = (photoId?: string): void => {
+  if (photoId) {
+    delete elementCache[photoId];
+  } else {
+    // Clear all cache
+    for (const key in elementCache) {
+      delete elementCache[key];
+    }
+  }
+};
+
+/**
+ * Applies a filter string to the photo elements with performance optimization
  */
 export const applyFilterToElements = (photoId: string, filterString: string): boolean => {
-  console.log(`Attempting to apply filter: ${filterString} to photo ${photoId}`);
+  console.log(`Applying filter: ${filterString} to photo ${photoId}`);
   
   try {
     const elements = findPhotoElements(photoId);
     
     if (elements.length === 0) {
-      console.error(`Cannot find any photo elements with ID: ${photoId}`);
-      toast.error("Impossibile trovare l'elemento foto selezionato");
+      // Don't show error toast for normal operation flows
+      // This can happen during normal component mounting/unmounting
+      console.warn(`Cannot find any photo elements with ID: ${photoId}`);
       return false;
     }
     
-    // Apply filter to all found elements
-    elements.forEach((element, index) => {
-      console.log(`Applying filter to element ${index}:`, filterString);
-      element.style.filter = filterString.trim();
-      
-      // Validate that the filter was actually applied
-      setTimeout(() => {
+    // Use requestAnimationFrame for smooth filter application
+    requestAnimationFrame(() => {
+      // Apply filter to all found elements
+      elements.forEach((element, index) => {
+        // Only update if the filter value has changed
         if (element.style.filter !== filterString.trim()) {
-          console.warn(`Filter didn't apply correctly to element ${index}`);
-        } else {
-          console.log(`Filter successfully applied to element ${index}`);
+          element.style.filter = filterString.trim();
+          console.log(`Applied filter to element ${index}:`, filterString);
         }
-      }, 100);
+      });
     });
     
     return true;
@@ -96,7 +121,6 @@ export const saveFilterToStorage = (photoId: string, filterString: string): void
 export const getFilterFromStorage = (photoId: string): string | null => {
   try {
     const filter = sessionStorage.getItem(`filter-${photoId}`);
-    console.log(`Retrieved filter from storage for photo ${photoId}:`, filter);
     return filter;
   } catch (error) {
     console.error("Error retrieving filter from storage:", error);
@@ -111,6 +135,8 @@ export const removeFilterFromStorage = (photoId: string): void => {
   try {
     console.log(`Removing filter from storage for photo ${photoId}`);
     sessionStorage.removeItem(`filter-${photoId}`);
+    // Also clear element cache when removing filter
+    clearElementCache(photoId);
   } catch (error) {
     console.error("Error removing filter from storage:", error);
   }
