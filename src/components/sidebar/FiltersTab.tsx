@@ -7,19 +7,27 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePhotoContext } from '@/context/PhotoContext';
 import { Plus } from 'lucide-react';
+import { toast } from 'sonner';
 
 export const FiltersTab: React.FC = () => {
-  const { setFilters } = usePhotoContext();
+  const { setFilters, state } = usePhotoContext();
   const photographers = ['All Photographers', 'John Smith', 'Sarah Jones', 'Miguel Rodriguez'];
   const events = ['All Events', 'Wedding', 'Corporate Event', 'Birthday Party', 'Conference', 'Graduation', 'Sports Event', 'Fashion Show'];
   
-  const [fromPhoto, setFromPhoto] = useState<string>('1');
-  const [toPhoto, setToPhoto] = useState<string>('');
+  const [fromPhoto, setFromPhoto] = useState<string>(state.filters.numberRange?.from.toString() || '1');
+  const [toPhoto, setToPhoto] = useState<string>(state.filters.numberRange?.to?.toString() || '');
   
   const handleRangeFilter = () => {
     const from = parseInt(fromPhoto) || 1;
-    const to = parseInt(toPhoto) || null;
+    const to = toPhoto ? parseInt(toPhoto) : null;
+    
+    if (to !== null && from > to) {
+      toast.error("'From' value cannot be greater than 'To' value");
+      return;
+    }
+    
     setFilters({ numberRange: { from, to } });
+    toast.success(`Photo range filter applied: ${from} ${to ? `to ${to}` : 'onwards'}`);
   };
 
   return (
@@ -28,7 +36,7 @@ export const FiltersTab: React.FC = () => {
         <Label htmlFor="photographer">Photographer</Label>
         <Select 
           onValueChange={(value) => setFilters({ photographer: value !== 'All Photographers' ? value : null })}
-          defaultValue="All Photographers"
+          defaultValue={state.filters.photographer || "All Photographers"}
         >
           <SelectTrigger id="photographer" className="w-full">
             <SelectValue placeholder="Select photographer" />
@@ -48,7 +56,7 @@ export const FiltersTab: React.FC = () => {
         <div className="flex space-x-2">
           <Select 
             onValueChange={(value) => setFilters({ eventDate: value !== 'All Events' ? value : null })}
-            defaultValue="All Events"
+            defaultValue={state.filters.eventDate || "All Events"}
           >
             <SelectTrigger id="event" className="w-full">
               <SelectValue placeholder="Select event" />
@@ -84,7 +92,7 @@ export const FiltersTab: React.FC = () => {
             id="to-photo" 
             type="number" 
             placeholder="To" 
-            min="1"
+            min={parseInt(fromPhoto) || 1}
             className="w-1/2" 
             value={toPhoto}
             onChange={(e) => setToPhoto(e.target.value)}
@@ -106,6 +114,7 @@ export const FiltersTab: React.FC = () => {
           id="date" 
           type="date" 
           className="w-full" 
+          value={state.filters.date || ""}
           onChange={(e) => setFilters({ date: e.target.value || null })}
         />
       </div>
@@ -113,6 +122,7 @@ export const FiltersTab: React.FC = () => {
       <div className="flex items-center space-x-2">
         <Switch 
           id="face-filter" 
+          checked={state.filters.hasFace === true}
           onCheckedChange={(checked) => setFilters({ hasFace: checked ? true : null })}
         />
         <Label htmlFor="face-filter">Has Face</Label>
@@ -122,13 +132,18 @@ export const FiltersTab: React.FC = () => {
         <Button 
           variant="outline" 
           className="w-full" 
-          onClick={() => setFilters({ 
-            photographer: null,
-            eventDate: null,
-            date: null,
-            hasFace: null,
-            numberRange: null
-          })}
+          onClick={() => {
+            setFilters({ 
+              photographer: null,
+              eventDate: null,
+              date: null,
+              hasFace: null,
+              numberRange: null
+            });
+            setFromPhoto('1');
+            setToPhoto('');
+            toast.info("All filters cleared");
+          }}
         >
           Clear Filters
         </Button>
