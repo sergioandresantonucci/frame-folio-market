@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePhotoContext, Photo } from '@/context/PhotoContext';
@@ -12,7 +13,6 @@ import { toast } from 'sonner';
 import { Upload as UploadIcon, ImagePlus, X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -119,7 +119,6 @@ const UploadContent: React.FC = () => {
   const { addPhotos } = usePhotoContext();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { user } = useAuth();
   
   const handleFilesSelected = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return;
@@ -141,12 +140,6 @@ const UploadContent: React.FC = () => {
   }, []);
   
   const handleUpload = useCallback(async () => {
-    if (!user) {
-      toast.error("Devi effettuare l'accesso per caricare le foto");
-      navigate('/auth');
-      return;
-    }
-    
     if (files.length === 0) {
       toast.warning("Seleziona delle foto da caricare");
       return;
@@ -176,7 +169,7 @@ const UploadContent: React.FC = () => {
         try {
           const fileExt = fileItem.file.name.split('.').pop();
           const fileName = `${uuidv4()}.${fileExt}`;
-          const filePath = `${user.id}/${fileName}`;
+          const filePath = `public/${fileName}`;
           
           // Update progress function
           const onProgress = (progress: { loaded: number; total: number }) => {
@@ -248,7 +241,6 @@ const UploadContent: React.FC = () => {
           const { error: dbError, data: photoData } = await supabase
             .from('photos')
             .insert({
-              user_id: user.id,
               storage_path: filePath,
               thumbnail_path: filePath,
               title: fileItem.file.name,
@@ -312,14 +304,7 @@ const UploadContent: React.FC = () => {
     } finally {
       setIsUploading(false);
     }
-  }, [files, photographer, eventDate, eventName, addPhotos, navigate, user]);
-  
-  React.useEffect(() => {
-    if (!user) {
-      toast.error("Devi effettuare l'accesso per caricare le foto");
-      navigate('/auth');
-    }
-  }, [user, navigate]);
+  }, [files, photographer, eventDate, eventName, addPhotos, navigate]);
   
   return (
     <Layout>

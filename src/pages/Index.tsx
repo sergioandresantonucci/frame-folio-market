@@ -5,7 +5,7 @@ import { Layout } from '@/components/ui/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
-import { ImagePlus, Upload } from 'lucide-react';
+import { ImagePlus, Upload, Camera, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const DashboardContent: React.FC = () => {
@@ -47,7 +47,7 @@ const DashboardContent: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="pb-2">
-              <p className="text-sm">Carica nuove foto per i tuoi clienti.</p>
+              <p className="text-sm">Carica nuove foto per i tuoi clienti senza bisogno di login.</p>
             </CardContent>
             <CardFooter>
               <Button className="w-full" onClick={() => navigate('/upload')}>
@@ -59,14 +59,20 @@ const DashboardContent: React.FC = () => {
 
         <section className="bg-gradient-to-br from-magenta/10 to-light-blue/20 rounded-lg p-6 animate-fadeIn">
           <div className="text-center space-y-3">
-            <h2 className="text-xl font-semibold">Inizia subito</h2>
+            <h2 className="text-xl font-semibold">Sei un fotografo?</h2>
             <p className="text-muted-foreground max-w-md mx-auto">
-              Carica le tue prime foto, imposta i prezzi e inizia a venderle ai tuoi clienti in pochi minuti.
+              Accedi o registrati nell'area fotografi per accedere a funzionalità avanzate e gestire il tuo portfolio.
             </p>
-            <Button className="bg-magenta hover:bg-magenta/90 mt-2" onClick={() => navigate('/upload')}>
-              <Upload className="h-4 w-4 mr-2" />
-              Carica Foto
-            </Button>
+            <div className="flex flex-wrap gap-4 justify-center mt-4">
+              <Button className="bg-magenta hover:bg-magenta/90" onClick={() => navigate('/auth')}>
+                <Camera className="h-4 w-4 mr-2" />
+                Area Fotografi
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/upload')}>
+                <Upload className="h-4 w-4 mr-2" />
+                Carica Foto
+              </Button>
+            </div>
           </div>
         </section>
       </div>

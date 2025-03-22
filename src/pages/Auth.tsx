@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Eye, EyeOff, User, Lock } from 'lucide-react';
+import { Eye, EyeOff, User, Lock, Camera } from 'lucide-react';
 
 const Auth: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -102,18 +102,31 @@ const Auth: React.FC = () => {
   return (
     <Layout>
       <div className="max-w-md mx-auto py-12">
+        <div className="mb-8 text-center">
+          <div className="flex justify-center mb-4">
+            <div className="rounded-full bg-magenta/10 p-3">
+              <Camera className="h-8 w-8 text-magenta" />
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold">Area Fotografi</h1>
+          <p className="text-muted-foreground mt-2">
+            Questa area è riservata ai fotografi autorizzati.
+            Gli utenti normali possono caricare foto senza registrazione.
+          </p>
+        </div>
+
         <Tabs defaultValue="login" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="login">Accedi</TabsTrigger>
-            <TabsTrigger value="register">Registrati</TabsTrigger>
+            <TabsTrigger value="register">Registrati come fotografo</TabsTrigger>
           </TabsList>
           
           <TabsContent value="login">
             <Card>
               <CardHeader>
-                <CardTitle>Accedi</CardTitle>
+                <CardTitle>Area Fotografi</CardTitle>
                 <CardDescription>
-                  Inserisci le tue credenziali per accedere al tuo account
+                  Accedi alla piattaforma come fotografo autorizzato
                 </CardDescription>
               </CardHeader>
               <form onSubmit={handleSignIn}>
@@ -173,9 +186,10 @@ const Auth: React.FC = () => {
           <TabsContent value="register">
             <Card>
               <CardHeader>
-                <CardTitle>Crea un account</CardTitle>
+                <CardTitle>Registrati come Fotografo</CardTitle>
                 <CardDescription>
-                  Inserisci i tuoi dati per creare un nuovo account
+                  Registrati per accedere alla piattaforma come fotografo autorizzato.
+                  Nota: le registrazioni sono soggette a verifica.
                 </CardDescription>
               </CardHeader>
               <form onSubmit={handleSignUp}>
@@ -239,13 +253,21 @@ const Auth: React.FC = () => {
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex flex-col gap-4">
                   <Button 
                     type="submit" 
                     className="w-full bg-magenta hover:bg-magenta/90"
                     disabled={loading}
                   >
-                    {loading ? 'Registrazione in corso...' : 'Registrati'}
+                    {loading ? 'Registrazione in corso...' : 'Registrati come fotografo'}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => navigate('/')}
+                  >
+                    Torna alla home
                   </Button>
                 </CardFooter>
               </form>
