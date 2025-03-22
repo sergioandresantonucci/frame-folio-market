@@ -52,12 +52,15 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave 
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: '',
+      date: new Date(), // Initialize with current date
       location: '',
       description: '',
     },
   });
 
   const onSubmit = (data: FormValues) => {
+    // Since all fields are required in the schema and defaultValues are set,
+    // TypeScript now knows data will have all the required properties
     onSave(data);
     form.reset();
   };
