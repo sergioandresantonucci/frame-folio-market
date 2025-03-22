@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import Upload from "./pages/Upload";
 import Sales from "./pages/Sales";
 import Analytics from "./pages/Analytics";
+import Events from "./pages/Events";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +27,7 @@ const App = () => (
           <Route path="/upload" element={<Upload />} />
           <Route path="/sales" element={<Sales />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="/events" element={<Events />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
