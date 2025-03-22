@@ -41,7 +41,7 @@ export const AdjustmentsTab: React.FC = () => {
     
     // Find the active photo element and apply CSS filters
     const photoId = state.activePhoto.id;
-    const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
+    const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`);
     
     if (photoElement) {
       // Save current filter in history before applying new one
@@ -84,7 +84,7 @@ export const AdjustmentsTab: React.FC = () => {
       const savedFilter = sessionStorage.getItem(`filter-${photoId}`);
       
       if (savedFilter) {
-        const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
+        const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`);
         if (photoElement) {
           photoElement.style.filter = savedFilter;
         }
@@ -139,7 +139,7 @@ export const AdjustmentsTab: React.FC = () => {
     const previousFilter = history[photoId];
     
     if (previousFilter) {
-      const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
+      const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`);
       if (photoElement) {
         photoElement.style.filter = previousFilter;
         sessionStorage.setItem(`filter-${photoId}`, previousFilter);
@@ -257,7 +257,7 @@ export const AdjustmentsTab: React.FC = () => {
     // If there's an active photo, reset its filters
     if (state.activePhoto) {
       const photoId = state.activePhoto.id;
-      const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
+      const photoElement = document.querySelector(`[data-photo-id="${photoId}"] img`);
       
       if (photoElement) {
         photoElement.style.filter = 'none';
@@ -439,7 +439,7 @@ export const AdjustmentsTab: React.FC = () => {
         
         <Button 
           size="sm"
-          className="bg-magenta hover:bg-magenta/90 flex items-center gap-1"
+          className="bg-primary hover:bg-primary/90 flex items-center gap-1"
           onClick={applyColorAdjustments}
           disabled={!state.activePhoto}
         >
