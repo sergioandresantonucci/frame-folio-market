@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { PhotoProvider, usePhotoContext } from '@/context/PhotoContext';
 import { Layout } from '@/components/ui/Layout';
@@ -103,7 +104,7 @@ const UploadContent: React.FC = () => {
       return prev;
     });
     
-    // Add successfully uploaded photos to context
+    // Add successfully uploaded photos to context with the required properties
     const successfulUploads = files
       .filter(file => file.status === 'success')
       .map(file => ({
@@ -113,6 +114,10 @@ const UploadContent: React.FC = () => {
         description: '',
         tags: [],
         uploadedAt: new Date().toISOString(),
+        // Add the missing required properties from the Photo type
+        price: 0,
+        watermarked: false,
+        selected: false
       }));
     
     if (successfulUploads.length > 0) {
