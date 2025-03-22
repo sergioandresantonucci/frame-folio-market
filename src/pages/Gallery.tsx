@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PhotoProvider, usePhotoContext, Photo } from '@/context/PhotoContext';
@@ -14,6 +13,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { FloatingCart } from '@/components/FloatingCart';
 import { CartModal } from '@/components/CartModal';
+import { ColorCorrectionBar } from '@/components/ColorCorrectionBar';
 
 const sampleImages = [
   {
@@ -278,6 +278,8 @@ const GalleryContent: React.FC = () => {
         <PhotoViewer />
         <CartModal />
         <FloatingCart />
+        
+        <ColorCorrectionBar />
       </div>
     </Layout>
   );

@@ -9,7 +9,7 @@ export const NoPhotoSelected: React.FC = () => {
         <Sliders className="h-12 w-12 text-gray-400 mx-auto mb-4" />
         <h3 className="text-lg font-medium mb-2">No Photo Selected</h3>
         <p className="text-sm text-gray-500 mb-6">
-          Select a photo to start enhancing it with color adjustments.
+          Select a photo to start enhancing it.
         </p>
       </div>
     </div>
