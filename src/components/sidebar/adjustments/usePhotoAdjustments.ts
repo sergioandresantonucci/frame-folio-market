@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import { usePhotoContext } from '@/context/photo/PhotoContext';
 import { toast } from 'sonner';
 import { PhotoAdjustmentsHook } from './types';
 import { useAdjustmentHistory } from './useAdjustmentHistory';
 import { 
-  findPhotoElement, 
   applyFilterToElements, 
   saveFilterToStorage, 
   getFilterFromStorage,
@@ -14,7 +14,7 @@ import {
   buildFilterString, 
   extractValuesFromFilter 
 } from './utils/filterUtils';
-import {
+import { 
   getAutoFixValues,
   getVibrantPresetValues,
   getSunsetPresetValues,
@@ -40,13 +40,13 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
   const [highlights, setHighlights] = useState<number>(0);
 
   // Check if we have an active photo
-  const hasActivePhoto = !!state.activePhoto;
+  const hasActivePhoto = Boolean(state.activePhoto);
   
   // Check if we can undo
-  const canUndo = hasActivePhoto && !!state.activePhoto && hasHistoryFor(state.activePhoto.id);
+  const canUndo = hasActivePhoto && Boolean(state.activePhoto) && hasHistoryFor(state.activePhoto.id);
 
   // Apply color adjustments function
-  const applyColorAdjustments = () => {
+  const applyColorAdjustments = useCallback(() => {
     if (!state.activePhoto) {
       toast.error("Seleziona una foto per applicare le regolazioni");
       return;
@@ -71,28 +71,39 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
       highlights
     );
     
-    console.log("Filter string generated:", filterString);
+    console.log("Generated filter string:", filterString);
     
-    // Apply the filter to both grid and viewer elements
+    // Apply the filter to all photo elements
     if (applyFilterToElements(photoId, filterString)) {
       // Store the filter in sessionStorage to persist through renders
       saveFilterToStorage(photoId, filterString);
       
       toast.success("Regolazioni colore applicate", {
-        description: `Luminosità: ${brightness}, Contrasto: ${contrast}, Saturazione: ${saturation}, Temperatura: ${temperature}`
+        description: `Luminosità: ${brightness}, Contrasto: ${contrast}, Saturazione: ${saturation}`
       });
     } else {
       console.error("Failed to apply filters to photo elements");
     }
-  };
+  }, [
+    state.activePhoto, 
+    brightness, 
+    contrast, 
+    saturation, 
+    clarity, 
+    temperature, 
+    highlights, 
+    saveToHistory
+  ]);
 
-  // Restore filters from sessionStorage when component mounts or active photo changes
+  // Restore filters from sessionStorage when active photo changes
   useEffect(() => {
     if (state.activePhoto) {
       const photoId = state.activePhoto.id;
       const savedFilter = getFilterFromStorage(photoId);
       
       if (savedFilter) {
+        console.log("Restoring saved filter for", photoId, ":", savedFilter);
+        
         // Apply saved filter to DOM elements
         applyFilterToElements(photoId, savedFilter);
         
@@ -108,6 +119,7 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
         setHighlights(values.highlights);
       } else {
         // Reset sliders if no saved filter
+        console.log("No saved filter found for", photoId, "resetting sliders");
         setBrightness(0);
         setContrast(0);
         setSaturation(0);
@@ -119,13 +131,15 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
   }, [state.activePhoto]);
 
   // Undo last adjustment
-  const undoAdjustment = () => {
+  const undoAdjustment = useCallback(() => {
     if (!state.activePhoto) return;
     
     const photoId = state.activePhoto.id;
     const previousFilter = getFromHistory(photoId);
     
     if (previousFilter) {
+      console.log("Restoring previous filter:", previousFilter);
+      
       // Apply previous filter to DOM elements
       applyFilterToElements(photoId, previousFilter);
       
@@ -148,14 +162,16 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
     } else {
       toast.info("Nessuna regolazione precedente da annullare");
     }
-  };
+  }, [state.activePhoto, getFromHistory, removeFromHistory]);
 
   // Apply auto-fix to selected photo
-  const applyAutoFix = () => {
+  const applyAutoFix = useCallback(() => {
     if (!state.activePhoto) {
       toast.error("Seleziona una foto per applicare la correzione automatica");
       return;
     }
+    
+    console.log("Applying auto-fix to photo:", state.activePhoto.id);
     
     // Set auto-fix values
     const values = getAutoFixValues();
@@ -166,16 +182,16 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
     setClarity(values.clarity);
     setHighlights(values.highlights);
     
-    toast.success("Correzione automatica applicata");
-    
     // Apply the changes immediately
     setTimeout(() => {
       applyColorAdjustments();
     }, 100);
-  };
+    
+    toast.success("Correzione automatica applicata");
+  }, [state.activePhoto, applyColorAdjustments]);
 
   // Apply vibrant preset
-  const applyVibrantPreset = () => {
+  const applyVibrantPreset = useCallback(() => {
     applyPreset('Vibrante', hasActivePhoto, () => {
       const values = getVibrantPresetValues();
       setBrightness(values.brightness);
@@ -190,10 +206,10 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
         applyColorAdjustments();
       }, 100);
     });
-  };
+  }, [hasActivePhoto, applyColorAdjustments]);
 
   // Apply warm sunset preset
-  const applySunsetPreset = () => {
+  const applySunsetPreset = useCallback(() => {
     applyPreset('Tramonto', hasActivePhoto, () => {
       const values = getSunsetPresetValues();
       setBrightness(values.brightness);
@@ -208,10 +224,10 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
         applyColorAdjustments();
       }, 100);
     });
-  };
+  }, [hasActivePhoto, applyColorAdjustments]);
 
   // Apply cool tone preset
-  const applyCoolPreset = () => {
+  const applyCoolPreset = useCallback(() => {
     applyPreset('Freddo', hasActivePhoto, () => {
       const values = getCoolPresetValues();
       setBrightness(values.brightness);
@@ -226,14 +242,16 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
         applyColorAdjustments();
       }, 100);
     });
-  };
+  }, [hasActivePhoto, applyColorAdjustments]);
 
   // Reset adjustments
-  const resetAdjustments = () => {
+  const resetAdjustments = useCallback(() => {
     if (!state.activePhoto) {
       toast.error("Seleziona una foto per resettare le regolazioni");
       return;
     }
+    
+    console.log("Resetting adjustments for photo:", state.activePhoto.id);
     
     setBrightness(0);
     setContrast(0);
@@ -253,7 +271,7 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
       removeFilterFromStorage(photoId);
       toast.info("Regolazioni resettate");
     }
-  };
+  }, [state.activePhoto]);
 
   return {
     brightness,

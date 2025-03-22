@@ -2,18 +2,32 @@
 import { toast } from 'sonner';
 
 /**
- * Finds the photo element in the DOM, either in grid or viewer
+ * Finds all photo elements in the DOM with the given ID
  */
-export const findPhotoElement = (photoId: string): HTMLImageElement | null => {
-  // Look for the image in the grid
+export const findPhotoElements = (photoId: string): HTMLImageElement[] => {
+  const elements: HTMLImageElement[] = [];
+  
+  // Find elements in the grid
   const gridElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
+  if (gridElement) {
+    elements.push(gridElement);
+    console.log("Found grid element for photo", photoId);
+  }
   
-  // Look for the image in the viewer
+  // Find the image in the viewer
   const viewerElement = document.querySelector(`.photo-viewer-image`) as HTMLImageElement;
+  if (viewerElement) {
+    elements.push(viewerElement);
+    console.log("Found viewer element");
+  }
   
-  console.log(`Looking for photo elements: Grid=${!!gridElement}, Viewer=${!!viewerElement}`);
+  if (elements.length === 0) {
+    console.error("No photo elements found with ID:", photoId);
+  } else {
+    console.log(`Found ${elements.length} elements for photo ${photoId}`);
+  }
   
-  return gridElement || viewerElement || null;
+  return elements;
 };
 
 /**
@@ -22,29 +36,19 @@ export const findPhotoElement = (photoId: string): HTMLImageElement | null => {
 export const applyFilterToElements = (photoId: string, filterString: string): boolean => {
   console.log(`Attempting to apply filter: ${filterString} to photo ${photoId}`);
   
-  // Get all related elements that need the filter
-  const gridElement = document.querySelector(`[data-photo-id="${photoId}"] img`) as HTMLImageElement;
-  const viewerElement = document.querySelector(`.photo-viewer-image`) as HTMLImageElement;
+  const elements = findPhotoElements(photoId);
   
-  let applied = false;
-  
-  if (gridElement) {
-    console.log("Applying filter to grid element:", gridElement);
-    gridElement.style.filter = filterString.trim();
-    applied = true;
-  }
-  
-  if (viewerElement) {
-    console.log("Applying filter to viewer element:", viewerElement);
-    viewerElement.style.filter = filterString.trim();
-    applied = true;
-  }
-  
-  if (!applied) {
-    console.error("Cannot find any photo elements with ID:", photoId);
+  if (elements.length === 0) {
+    console.error(`Cannot find any photo elements with ID: ${photoId}`);
     toast.error("Impossibile trovare l'elemento foto selezionato");
     return false;
   }
+  
+  // Apply filter to all found elements
+  elements.forEach((element, index) => {
+    console.log(`Applying filter to element ${index}:`, filterString);
+    element.style.filter = filterString.trim();
+  });
   
   return true;
 };
