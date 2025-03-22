@@ -29,7 +29,7 @@ export const Sidebar: React.FC = () => {
     <aside
       className={cn(
         "h-[calc(100vh-4rem)] flex flex-col border-r border-gray-100 bg-white transition-all duration-300 ease-in-out",
-        collapsed ? "w-16" : "w-80" 
+        collapsed ? "w-16" : "w-96" // Increased from w-80 to w-96
       )}
     >
       <div className="flex items-center justify-between p-4 h-14 border-b border-gray-100">
