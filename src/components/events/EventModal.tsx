@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,6 +32,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { Event } from '@/pages/Events';
 import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
 
 // Define our form schema with location validation
 const formSchema = z.object({
@@ -53,6 +54,7 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave 
   const isMobile = useIsMobile();
   const locationInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -64,10 +66,31 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave 
     },
   });
 
+  // Check if Google Maps API is loaded
+  useEffect(() => {
+    const checkGoogleMapsLoaded = () => {
+      if (window.google && window.google.maps && window.google.maps.places) {
+        setGoogleMapsLoaded(true);
+      } else {
+        // Check again after a delay
+        setTimeout(checkGoogleMapsLoaded, 500);
+      }
+    };
+    
+    checkGoogleMapsLoaded();
+    
+    return () => {
+      // Clean up
+      if (autocompleteRef.current && window.google && window.google.maps) {
+        google.maps.event.clearInstanceListeners(autocompleteRef.current);
+        autocompleteRef.current = null;
+      }
+    };
+  }, []);
+
   // Initialize Google Places Autocomplete
   useEffect(() => {
-    // Check if Google Maps API is loaded
-    if (isOpen && locationInputRef.current && window.google && window.google.maps && !autocompleteRef.current) {
+    if (isOpen && locationInputRef.current && googleMapsLoaded && !autocompleteRef.current) {
       try {
         autocompleteRef.current = new window.google.maps.places.Autocomplete(locationInputRef.current, {
           types: ['address'],
@@ -78,10 +101,12 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave 
           const place = autocompleteRef.current?.getPlace();
           if (place?.formatted_address) {
             form.setValue('location', place.formatted_address, { shouldValidate: true });
+            toast.success('Location selected', { duration: 2000 });
           }
         });
       } catch (error) {
         console.error("Error initializing Google Places Autocomplete:", error);
+        toast.error("Could not load location autocomplete");
       }
     }
 
@@ -92,7 +117,7 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave 
         autocompleteRef.current = null;
       }
     };
-  }, [form, isOpen]);
+  }, [form, isOpen, googleMapsLoaded]);
 
   const onSubmit = (data: FormValues) => {
     onSave({
@@ -176,12 +201,24 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave 
                 <FormItem>
                   <FormLabel>Location</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Enter event location" 
-                      {...field} 
-                      ref={locationInputRef}
-                    />
+                    <div className="relative">
+                      <Input 
+                        placeholder={googleMapsLoaded ? "Start typing to search for a location" : "Loading location search..."}
+                        {...field} 
+                        ref={locationInputRef}
+                        className="pr-10"
+                        disabled={!googleMapsLoaded}
+                      />
+                      {!googleMapsLoaded && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                          <div className="animate-spin h-4 w-4 border-2 border-magenta border-opacity-50 rounded-full border-t-transparent"></div>
+                        </div>
+                      )}
+                    </div>
                   </FormControl>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {googleMapsLoaded ? "Type to search for an address" : "Loading Google Maps..."}
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}

@@ -17,11 +17,13 @@ import {
   Eye,
   ScanFace,
   ShoppingCart,
-  Edit
+  Edit,
+  Calendar
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useNavigate } from 'react-router-dom';
 
 interface PhotoGridProps {
   className?: string;
@@ -46,6 +48,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className, searchQuery = '
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   const filteredPhotos = state.photos.filter(photo => {
     const { filters } = state;
@@ -219,6 +222,12 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className, searchQuery = '
     }
   };
 
+  const navigateToEvent = (eventName: string) => {
+    if (eventName) {
+      navigate(`/events?filter=${encodeURIComponent(eventName)}`);
+    }
+  };
+
   if (filteredPhotos.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] text-center">
@@ -361,7 +370,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className, searchQuery = '
                       state.cartItems.includes(photo.id) && "bg-green-500/50 hover:bg-green-500/70"
                     )}
                     onClick={(e) => handleAddToCart(photo.id, e)}
-                    title={state.cartItems.includes(photo.id) ? "Già nel carrello" : "Aggiungi al carrello"}
+                    title={state.cartItems.includes(photo.id) ? "Already in cart" : "Add to cart"}
                   >
                     <ShoppingCart className="h-4 w-4" />
                   </Button>
@@ -440,6 +449,22 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ className, searchQuery = '
                   </div>
                 )}
               </div>
+              
+              {photo.eventDate && (
+                <div className="mt-2">
+                  <Badge 
+                    variant="outline"
+                    className="text-xs cursor-pointer hover:bg-gray-100 transition-colors flex items-center gap-1 max-w-full"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigateToEvent(photo.eventDate);
+                    }}
+                  >
+                    <Calendar className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">{photo.eventDate}</span>
+                  </Badge>
+                </div>
+              )}
             </div>
             
             {state.selectedIds.includes(photo.id) && (
