@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePhotoContext } from '@/context/PhotoContext';
@@ -117,15 +116,6 @@ export const FiltersTab: React.FC = () => {
           value={state.filters.date || ""}
           onChange={(e) => setFilters({ date: e.target.value || null })}
         />
-      </div>
-
-      <div className="flex items-center space-x-2">
-        <Switch 
-          id="face-filter" 
-          checked={state.filters.hasFace === true}
-          onCheckedChange={(checked) => setFilters({ hasFace: checked ? true : null })}
-        />
-        <Label htmlFor="face-filter">Has Face</Label>
       </div>
 
       <div className="pt-2">
