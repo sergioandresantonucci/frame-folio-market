@@ -5,11 +5,14 @@ import { useAdjustmentState } from './hooks/useAdjustmentState';
 import { useAdjustmentOperations } from './hooks/useAdjustmentOperations';
 import { useAdjustmentPresets } from './hooks/useAdjustmentPresets';
 import { useEffectApplication } from './hooks/useEffectApplication';
+import { usePhotoContext } from '@/context/PhotoContext';
 
 /**
  * Main hook for photo adjustments functionality
  */
 export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
+  const { state } = usePhotoContext();
+  
   // Get adjustment state (slider values)
   const {
     brightness,
@@ -31,6 +34,9 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
     setValues
   } = useAdjustmentState();
 
+  // Force hasActivePhoto to be true if there's an active photo in the context
+  const photoSelected = Boolean(state.activePhoto);
+
   // Get operations (apply, undo, reset)
   const {
     canUndo,
@@ -46,7 +52,7 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
     applySunsetPreset,
     applyCoolPreset
   } = useAdjustmentPresets(
-    hasActivePhoto,
+    photoSelected, // Use photoSelected instead of hasActivePhoto
     setValues,
     applyColorAdjustments
   );
@@ -73,7 +79,7 @@ export const usePhotoAdjustments = (): PhotoAdjustmentsHook => {
     setHighlights,
     
     // Derived state
-    hasActivePhoto,
+    hasActivePhoto: photoSelected, // Always return the context-based value
     canUndo,
     
     // Operations

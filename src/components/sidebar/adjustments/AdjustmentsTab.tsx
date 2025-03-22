@@ -8,8 +8,10 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { motion } from 'framer-motion';
+import { usePhotoContext } from '@/context/PhotoContext';
 
 export const AdjustmentsTab: React.FC = () => {
+  const { state } = usePhotoContext();
   const {
     brightness,
     setBrightness,
@@ -36,7 +38,10 @@ export const AdjustmentsTab: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState("sliders");
 
-  if (!hasActivePhoto) {
+  // Check if there's an active photo directly from the context
+  const photoSelected = Boolean(state.activePhoto);
+
+  if (!photoSelected) {
     return (
       <div className="flex flex-col items-center justify-center p-6 h-[60vh] text-center">
         <div className="bg-gray-50 p-8 rounded-xl w-full">
