@@ -26,33 +26,38 @@ export const PresetButtons: React.FC<PresetButtonsProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="flex flex-col space-y-2">
       <Button 
         size="sm" 
         variant="outline" 
-        className="flex flex-col items-center gap-1 py-2"
+        className="flex items-center gap-2 w-full justify-start py-2"
         onClick={() => handlePreset('Vibrante', onApplyVibrant)}
+        disabled={!hasActivePhoto}
       >
         <Sparkles className="h-4 w-4 text-purple-500" />
-        <span className="text-xs">Vibrante</span>
+        <span>Vibrante</span>
       </Button>
+      
       <Button 
         size="sm" 
         variant="outline" 
-        className="flex flex-col items-center gap-1 py-2"
+        className="flex items-center gap-2 w-full justify-start py-2"
         onClick={() => handlePreset('Freddo', onApplyCool)}
+        disabled={!hasActivePhoto}
       >
         <Cloud className="h-4 w-4 text-blue-500" />
-        <span className="text-xs">Freddo</span>
+        <span>Freddo</span>
       </Button>
+      
       <Button 
         size="sm" 
         variant="outline" 
-        className="flex flex-col items-center gap-1 py-2"
+        className="flex items-center gap-2 w-full justify-start py-2"
         onClick={() => handlePreset('Tramonto', onApplySunset)}
+        disabled={!hasActivePhoto}
       >
         <Sunset className="h-4 w-4 text-orange-500" />
-        <span className="text-xs">Tramonto</span>
+        <span>Tramonto</span>
       </Button>
     </div>
   );

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { usePhotoContext } from '@/context/PhotoContext';
+import { usePhotoContext } from '@/context/photo/PhotoContext';
 import { toast } from 'sonner';
 
 export const usePhotoAdjustments = () => {
@@ -164,14 +164,19 @@ export const usePhotoAdjustments = () => {
     
     toast.success("Correzione automatica applicata");
     
-    // Apply the changes after a short delay
+    // Apply the changes immediately
     setTimeout(() => {
       applyColorAdjustments();
-    }, 300);
+    }, 100);
   };
 
   // Apply vibrant preset
   const applyVibrantPreset = () => {
+    if (!state.activePhoto) {
+      toast.error("Seleziona una foto per applicare il preset");
+      return;
+    }
+    
     setBrightness(10);
     setContrast(20);
     setSaturation(30);
@@ -181,14 +186,19 @@ export const usePhotoAdjustments = () => {
     
     toast.success("Preset 'Vibrante' applicato");
     
-    // Apply the changes after a short delay
+    // Apply the changes immediately
     setTimeout(() => {
       applyColorAdjustments();
-    }, 300);
+    }, 100);
   };
 
   // Apply warm sunset preset
   const applySunsetPreset = () => {
+    if (!state.activePhoto) {
+      toast.error("Seleziona una foto per applicare il preset");
+      return;
+    }
+    
     setBrightness(5);
     setContrast(10);
     setSaturation(15);
@@ -198,14 +208,19 @@ export const usePhotoAdjustments = () => {
     
     toast.success("Preset 'Tramonto' applicato");
     
-    // Apply the changes after a short delay
+    // Apply the changes immediately
     setTimeout(() => {
       applyColorAdjustments();
-    }, 300);
+    }, 100);
   };
 
   // Apply cool tone preset
   const applyCoolPreset = () => {
+    if (!state.activePhoto) {
+      toast.error("Seleziona una foto per applicare il preset");
+      return;
+    }
+    
     setBrightness(0);
     setContrast(10);
     setSaturation(0);
@@ -215,14 +230,19 @@ export const usePhotoAdjustments = () => {
     
     toast.success("Preset 'Freddo' applicato");
     
-    // Apply the changes after a short delay
+    // Apply the changes immediately
     setTimeout(() => {
       applyColorAdjustments();
-    }, 300);
+    }, 100);
   };
 
   // Reset adjustments
   const resetAdjustments = () => {
+    if (!state.activePhoto) {
+      toast.error("Seleziona una foto per resettare le regolazioni");
+      return;
+    }
+    
     setBrightness(0);
     setContrast(0);
     setSaturation(0);
