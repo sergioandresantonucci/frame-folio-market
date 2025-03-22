@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/table';
 import { EventModal } from '@/components/events/EventModal';
 import { format } from 'date-fns';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Card, CardContent } from '@/components/ui/card';
 
 // Event type definition
 export interface Event {
@@ -25,6 +27,7 @@ export interface Event {
 
 const Events = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const isMobile = useIsMobile();
   const [events, setEvents] = useState<Event[]>([
     {
       id: '1',
@@ -74,53 +77,84 @@ const Events = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto py-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Photography Events</h1>
+      <div className="container mx-auto py-6 px-4 md:px-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <h1 className="text-2xl md:text-3xl font-bold">Photography Events</h1>
           <Button 
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 w-full md:w-auto"
           >
             <Plus className="h-4 w-4" />
             Insert Event
           </Button>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Event</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Description</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {events.length === 0 ? (
+        {isMobile ? (
+          <div className="space-y-4">
+            {events.length === 0 ? (
+              <div className="text-center py-8 bg-white rounded-lg shadow-md">
+                <p className="text-muted-foreground">No events found. Click "Insert Event" to add one.</p>
+              </div>
+            ) : (
+              events.map(event => (
+                <Card key={event.id} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 font-medium text-lg mb-2">
+                      <Calendar className="h-4 w-4 text-magenta" />
+                      {event.title}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="font-medium">Date:</div>
+                      <div>{format(event.date, 'dd MMM yyyy')}</div>
+                      
+                      <div className="font-medium">Location:</div>
+                      <div>{event.location}</div>
+                      
+                      <div className="font-medium">Description:</div>
+                      <div>{event.description}</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-6">
-                    No events found. Click "Insert Event" to add one.
-                  </TableCell>
+                  <TableHead>Event</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Description</TableHead>
                 </TableRow>
-              ) : (
-                events.map(event => (
-                  <TableRow key={event.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-gray-500" />
-                        {event.title}
-                      </div>
+              </TableHeader>
+              <TableBody>
+                {events.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-6">
+                      No events found. Click "Insert Event" to add one.
                     </TableCell>
-                    <TableCell>{format(event.date, 'dd MMM yyyy')}</TableCell>
-                    <TableCell>{event.location}</TableCell>
-                    <TableCell>{event.description}</TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                ) : (
+                  events.map(event => (
+                    <TableRow key={event.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-magenta" />
+                          {event.title}
+                        </div>
+                      </TableCell>
+                      <TableCell>{format(event.date, 'dd MMM yyyy')}</TableCell>
+                      <TableCell>{event.location}</TableCell>
+                      <TableCell>{event.description}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
 
       <EventModal 

@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -31,6 +32,7 @@ import {
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Event } from '@/pages/Events';
+import { Textarea } from '@/components/ui/textarea';
 
 const formSchema = z.object({
   title: z.string().min(2, { message: 'Title must be at least 2 characters' }),
@@ -48,6 +50,7 @@ interface EventModalProps {
 }
 
 export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave }) => {
+  const isMobile = useIsMobile();
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -70,7 +73,10 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className={cn(
+        "sm:max-w-[500px]",
+        isMobile && "w-[calc(100%-2rem)] p-4"
+      )}>
         <DialogHeader>
           <DialogTitle>Add New Event</DialogTitle>
         </DialogHeader>
@@ -116,7 +122,7 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave 
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto p-0" align={isMobile ? "center" : "start"}>
                       <Calendar
                         mode="single"
                         selected={field.value}
@@ -151,18 +157,33 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave 
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter event description" {...field} />
+                    <Textarea 
+                      placeholder="Enter event description" 
+                      className="resize-none" 
+                      rows={3} 
+                      {...field} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>
+            <DialogFooter className={isMobile ? "flex-col gap-2" : ""}>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={onClose}
+                className={isMobile ? "w-full" : ""}
+              >
                 Cancel
               </Button>
-              <Button type="submit">Save Event</Button>
+              <Button 
+                type="submit"
+                className={isMobile ? "w-full" : ""}
+              >
+                Save Event
+              </Button>
             </DialogFooter>
           </form>
         </Form>
